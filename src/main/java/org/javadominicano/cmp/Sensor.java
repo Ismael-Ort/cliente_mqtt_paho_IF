@@ -5,11 +5,13 @@ import java.util.Date;
 public class Sensor {
 
     private String sensorId;
-    private int temperatura;
+    private int temperatura; // Ensure this field exists
+    private String sensorType;
     private Date fecha = new Date();
 
-    public Sensor(String id){
+    public Sensor(String id, String sensorType) {
         setSensorId(id);
+        setSensorType(sensorType);
         int numero = (int) (Math.random() * 100) + 1;
         setTemperatura(numero);
     }
@@ -19,7 +21,7 @@ public class Sensor {
     }
 
     public void setTemperatura(int temperatura) {
-        this.temperatura = temperatura;
+        this.temperatura = temperatura; 
     }
 
     public Date getFecha() {
@@ -36,5 +38,13 @@ public class Sensor {
 
     public void setSensorId(String sensorId) {
         this.sensorId = sensorId;
+    }
+
+    public String getSensorType() {
+        return sensorType;
+    }
+
+    public void setSensorType(String sensorType) {
+        this.sensorType = sensorType;
     }
 }
