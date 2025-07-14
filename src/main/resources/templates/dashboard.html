@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Dashboard | WeatherNet</title>
     <link rel="stylesheet" href="/css/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2/dist/stomp.min.js"></script>
 </head>
 <body>
 <div class="sidebar">
@@ -48,7 +50,25 @@
 
     <!-- 🌐 Estaciones por tarjeta -->
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
-    <div id="summary" class="cards-container"></div>
+    <div id="summary" class="cards-container">
+        <div th:each="est : ${resumen}"
+             th:class="${'station-card' + (est.status == 'DESCONECTADA' ? ' offline' : '')}">
+            <h3 th:text="${est.stationName}"></h3>
+            <p><strong>Estado:</strong> <span th:text="${est.status}"></span></p>
+            <p>
+                <strong>Última lectura:</strong><br>
+                <span th:text="${est.lastUpdate != null ? #dates.format(est.lastUpdate,'dd/MM/yyyy HH:mm:ss') : 'No disponible'}"></span>
+            </p>
+            <ul>
+                <li>🌡️ Temperatura: <span th:text="${est.data['temperatura']} ?: 'N/D'"></span> °C</li>
+                <li>💧 Humedad: <span th:text="${est.data['humedad']} ?: 'N/D'"></span> %</li>
+                <li>⬇️ Presión: <span th:text="${est.data['presion']} ?: 'N/D'"></span> hPa</li>
+                <li>💨 Viento: <span th:text="${est.data['viento']} ?: 'N/D'"></span> m/s</li>
+                <li>🌧️ Precipitación: <span th:text="${est.data['precipitacion']} ?: 'N/D'"></span> mm</li>
+                <li>🌱 Humedad Suelo: <span th:text="${est.data['humedad_suelo']} ?: 'N/D'"></span> %</li>
+            </ul>
+        </div>
+    </div>
 
     <!-- 🔘 Botón de actualización -->
     <div style="margin: 1rem 0;">
@@ -62,113 +82,152 @@
     <div id="alertas-container">
         <p>Cargando alertas...</p>
     </div>
+    <div id="alertas-pagination" class="pagination"></div>
 </div>
 
 <script>
+let alertasData = [];
+let paginaActual = 1;
+const itemsPorPagina = 5;
+
+function renderEstaciones(estaciones) {
+    const container = document.getElementById("summary");
+    container.innerHTML = "";
+    estaciones.forEach(est => {
+        const card = document.createElement("div");
+        card.classList.add("station-card");
+        if (est.status === "DESCONECTADA") {
+            card.classList.add("offline");
+        }
+        const ultimaLectura = est.lastUpdate ? new Date(est.lastUpdate).toLocaleString() : "No disponible";
+        card.innerHTML = `
+            <h3>${est.stationName}</h3>
+            <p><strong>Estado:</strong> ${est.status}</p>
+            <p><strong>Última lectura:</strong><br> ${ultimaLectura}</p>
+            <ul>
+                <li>🌡️ Temperatura: ${est.data?.temperatura ?? 'N/D'} °C</li>
+                <li>💧 Humedad: ${est.data?.humedad ?? 'N/D'} %</li>
+                <li>⬇️ Presión: ${est.data?.presion ?? 'N/D'} hPa</li>
+                <li>💨 Viento: ${est.data?.viento ?? 'N/D'} m/s</li>
+                <li>🌧️ Precipitación: ${est.data?.precipitacion ?? 'N/D'} mm</li>
+                <li>🌱 Humedad Suelo: ${est.data?.humedad_suelo ?? 'N/D'} %</li>
+            </ul>`;
+        container.appendChild(card);
+    });
+}
+
+function renderAlertasTabla() {
+    const alertasDiv = document.getElementById("alertas-container");
+    const pagDiv = document.getElementById("alertas-pagination");
+    if (alertasData.length === 0) {
+        alertasDiv.innerHTML = "<p>✅ No hay alertas activas.</p>";
+        pagDiv.innerHTML = "";
+        return;
+    }
+    const totalPaginas = Math.ceil(alertasData.length / itemsPorPagina);
+    let html = `
+        <table class="alert-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Estación</th>
+                    <th>Sensor</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody>`;
+    const start = (paginaActual - 1) * itemsPorPagina;
+    alertasData.slice(start, start + itemsPorPagina).forEach(a => {
+        html += `
+            <tr>
+                <td>${new Date(a.fecha).toLocaleString()}</td>
+                <td>${a.nombreEstacion}</td>
+                <td>${a.sensorNombre}</td>
+                <td>${a.tipoSensor}</td>
+                <td>${a.valor}</td>
+                <td>${a.mensaje}</td>
+            </tr>`;
+    });
+    html += `</tbody></table>`;
+    alertasDiv.innerHTML = html;
+    const pagHtml = `
+        <button class="prev-page" ${paginaActual === 1 ? 'disabled' : ''}>Anterior</button>
+        <span>${paginaActual} / ${totalPaginas}</span>
+        <button class="next-page" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+    pagDiv.innerHTML = pagHtml;
+    pagDiv.querySelector('.prev-page').onclick = () => {
+        if (paginaActual > 1) {
+            paginaActual--;
+            renderAlertasTabla();
+        }
+    };
+    pagDiv.querySelector('.next-page').onclick = () => {
+        if (paginaActual < totalPaginas) {
+            paginaActual++;
+            renderAlertasTabla();
+        }
+    };
+}
+
+function renderAlertas(alertas) {
+    alertasData = alertas;
+    paginaActual = 1;
+    renderAlertasTabla();
+}
+
 function cargarDashboard() {
-    // Resumen general
     fetch("/api/stations/summary")
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             const container = document.getElementById("resumen-general");
             const html = `
                 <div class="card">Total Estaciones: ${data.total}</div>
                 <div class="card">En Línea: ${data.enLinea}</div>
                 <div class="card">Desconectadas: ${data.desconectadas}</div>
-                <div class="card alerta">Alarmas Activas: ${data.alertasActivas}</div>
-            `;
+                <div class="card alerta">Alarmas Activas: ${data.alertasActivas}</div>`;
             container.innerHTML = html;
-        }).catch(error => {
+        })
+        .catch(() => {
             document.getElementById("resumen-general").innerHTML = "<p>Error cargando datos</p>";
-            console.error(error);
         });
 
-    // Estaciones
     fetch("/api/stations/status-summary")
         .then(res => res.json())
-        .then(estaciones => {
-            const container = document.getElementById("summary");
-            container.innerHTML = "";
-
-            estaciones.forEach(est => {
-                const card = document.createElement("div");
-                card.classList.add("station-card");
-                if (est.status === "DESCONECTADA") {
-                    card.classList.add("offline");
-                }
-
-                const ultimaLectura = est.lastUpdate
-                    ? new Date(est.lastUpdate).toLocaleString()
-                    : "No disponible";
-
-                card.innerHTML = `
-                    <h3>${est.stationName}</h3>
-                    <p><strong>Estado:</strong> ${est.status}</p>
-                    <p><strong>Última lectura:</strong><br> ${ultimaLectura}</p>
-                    <ul>
-                        <li>🌡️ Temperatura: ${est.data?.temperatura ?? 'N/D'} °C</li>
-                        <li>💧 Humedad: ${est.data?.humedad ?? 'N/D'} %</li>
-                        <li>⬇️ Presión: ${est.data?.presion ?? 'N/D'} hPa</li>
-                        <li>💨 Viento: ${est.data?.viento ?? 'N/D'} m/s</li>
-                        <li>🌧️ Precipitación: ${est.data?.precipitacion ?? 'N/D'} mm</li>
-                        <li>🌱 Humedad Suelo: ${est.data?.humedad_suelo ?? 'N/D'} %</li>
-                    </ul>
-                `;
-                container.appendChild(card);
-            });
-        })
-        .catch(err => {
+        .then(renderEstaciones)
+        .catch(() => {
             document.getElementById("summary").innerHTML = "<p>Error cargando estaciones.</p>";
-            console.error(err);
         });
 
-    // Alertas
     fetch("/api/alertas")
         .then(res => res.json())
-        .then(alertas => {
-            const alertasDiv = document.getElementById("alertas-container");
-            if (alertas.length === 0) {
-                alertasDiv.innerHTML = "<p>✅ No hay alertas activas.</p>";
-                return;
-            }
-
-            let html = `
-            <table class="alert-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Estación</th>
-                        <th>Sensor</th>
-                        <th>Tipo</th>
-                        <th>Valor</th>
-                        <th>Mensaje</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-
-            alertas.forEach(a => {
-                html += `
-                <tr>
-                    <td>${new Date(a.fecha).toLocaleString()}</td>
-                    <td>${a.nombreEstacion}</td>
-                    <td>${a.sensorNombre}</td>
-                    <td>${a.tipoSensor}</td>
-                    <td>${a.valor}</td>
-                    <td>${a.mensaje}</td>
-                </tr>`;
-            });
-
-            html += `</tbody></table>`;
-            alertasDiv.innerHTML = html;
-        })
-        .catch(err => {
+        .then(renderAlertas)
+        .catch(() => {
             document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
-            console.error(err);
+            document.getElementById("alertas-pagination").innerHTML = "";
         });
 }
 
-window.onload = cargarDashboard;
+let stompClient = null;
+
+function connectWs() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/status', msg => {
+            renderEstaciones(JSON.parse(msg.body));
+        });
+        stompClient.subscribe('/topic/alertas', msg => {
+            renderAlertas(JSON.parse(msg.body));
+        });
+    });
+}
+
+window.onload = () => {
+    cargarDashboard();
+    connectWs();
+};
 </script>
 </body>
 </html>

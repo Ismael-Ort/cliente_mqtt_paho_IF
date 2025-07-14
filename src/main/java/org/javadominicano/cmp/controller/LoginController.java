@@ -12,6 +12,6 @@ public class LoginController {
 
     @GetMapping("/dashboard")
     public String dashboard() {
-        return "dashboard";
+        return "redirect:/dashboard/estaciones";
     }
 }
