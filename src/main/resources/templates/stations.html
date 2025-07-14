@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Administrar Estaciones | WeatherNet</title>
+    <link rel="stylesheet" href="/css/stations.css">
+    <style>
+        .sensor-section {
+            background-color: #ffffff;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .sensor-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sensor-table th, .sensor-table td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .sensor-table th {
+            background-color: #4d28f1;
+        }
+
+        .sensor-toggle {
+            margin-top: 0.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+        .actions a, .actions button {
+            text-decoration: none;
+            color: white !important;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin: 0 2px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-block;
+        }
+        .actions .edit { background-color: #f59e0b; /* amber-500 */ }
+        .actions .delete { background-color: #ef4444; /* red-500 */ }
+        .actions .action-button { background-color: #6366f1; /* indigo-500 */ }
+        .sensor-section h4 { margin-top: 0; }
+
+    </style>
+</head>
+
+<body>
+<div class="sidebar">
+    <h2>WeatherNet</h2>
+    <ul>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/dashboard/administrar-estaciones" class="active">Estaciones</a></li>
+        <li><a href="/dashboard/reportes">Reportes</a></li>
+        <li><a href="/dashboard/graficos">Gráficos</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <h1>Administrar Estaciones</h1>
+
+    <!-- Botón de Nueva Estación -->
+    <div sec:authorize="hasRole('ADMIN')">
+        <button id="mostrarFormulario" class="create-button">➕ Nueva Estación</button>
+    </div>
+
+    <!-- Formulario de nueva estación -->
+    <div id="formularioEstacion" class="formulario" style="display: none;" sec:authorize="hasRole('ADMIN')">
+        <form th:action="@{/dashboard/estaciones/guardar}" method="post">
+            <label for="nombre">Nombre de la Estación:</label>
+            <input type="text" id="nombre" name="stationModel" required />
+            <button type="submit">✅ Crear</button>
+            <button type="button" id="cancelarFormulario" class="cancelar">Cancelar</button>
+        </form>
+    </div>
+
+<!-- Tabla de estaciones -->
+<table class="styled-table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th sec:authorize="hasRole('ADMIN')">Acciones</th>
+    </tr>
+    </thead>
+    <tbody>
+            <th:block th:each="estacion : ${estaciones}">
+        <tr>
+            <td th:text="${estacion.stationId}">1</td>
+            <td th:text="${estacion.stationModel}">Nombre</td>
+            <!-- El botón de acciones solo se muestra a los administradores -->
+            <td class="actions" sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/dashboard/estaciones/editar/{id}(id=${estacion.stationId})}" class="action-button edit">✏️ Editar</a>
+                <form th:action="@{/dashboard/estaciones/borrar/{id}(id=${estacion.stationId})}" method="post" style="display: inline;">
+                    <button type="submit" class="action-button delete" onclick="return confirm('¿Estás seguro de que quieres borrar esta estación y todos sus datos?');">🗑️ Borrar</button>
+                </form>
+                <button type="button"
+                        class="action-button"
+                        th:attr="data-id=${estacion.stationId}"
+                        onclick="toggleSensorMenu(this)">
+                    ⚙️ Sensores
+                </button>
+            </td>
+        </tr>
+        <!-- El menú de sensores completo solo se genera para los administradores -->
+        <tr sec:authorize="hasRole('ADMIN')">
+            <td colspan="3" style="padding: 0;">
+                <div th:id="'sensorMenu-' + ${estacion.stationId}"
+                     class="sensor-section hidden">
+                    <h4>Sensores de <span th:text="${estacion.stationModel}">Estación</span></h4>
+                    <table class="sensor-table" th:if="${estacion.sensores != null}">
+                        <thead>
+                        <tr>
+                            <th>Sensor</th>
+                            <th>Tipo</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="sensor : ${estacion.sensores}">
+                            <td th:text="${sensor.sensorModel}">Sensor_X</td>
+                            <td th:text="${sensor.sensorType}">tipo</td>
+                            <td th:text="${sensor.unit}">unidad</td>
+                            <td>
+                                <span th:text="${sensor.activo} ? 'Activo' : 'Inactivo'"
+                                      th:classappend="${sensor.activo} ? 'activo' : 'inactivo'"></span>
+                            </td>
+                            <td>
+                                <form th:action="@{/dashboard/sensor/{id}/toggle(id=${sensor.sensorId})}" method="post">
+                                    <button type="submit"
+                                            th:text="${sensor.activo} ? 'Deshabilitar' : 'Habilitar'"
+                                            class="sensor-toggle"></button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <p th:if="${estacion.sensores == null || #lists.isEmpty(estacion.sensores)}">
+                        No hay sensores disponibles.
+                    </p>
+                </div>
+            </td>
+        </tr>
+    </th:block>
+    </tbody>
+</table>
+
+</div>
+
+<script>
+    document.getElementById("mostrarFormulario")?.addEventListener("click", function () {
+        document.getElementById("formularioEstacion").style.display = "block";
+        this.style.display = "none";
+    });
+
+    document.getElementById("cancelarFormulario")?.addEventListener("click", function () {
+        document.getElementById("formularioEstacion").style.display = "none";
+        document.getElementById("mostrarFormulario").style.display = "inline-block";
+    });
+
+    function toggleSensorMenu(button) {
+        const id = button.getAttribute("data-id");
+        const div = document.getElementById("sensorMenu-" + id);
+        div.classList.toggle("hidden");
+    }
+</script>
+</body>
+</html>

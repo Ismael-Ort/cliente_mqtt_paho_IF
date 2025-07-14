@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Gráficos | WeatherNet</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/graficos.css">
+    <!-- Librerías para los gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<div class="sidebar">
+    <h2>WeatherNet</h2>
+    <ul>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a href="/dashboard/administrar-estaciones">Estaciones</a></li>
+        <li><a href="/dashboard/reportes">Reportes</a></li>
+        <li><a href="/dashboard/graficos" class="active">Gráficos</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <h1>Visualización de Datos de Sensores</h1>
+
+    <!-- Formulario de selección -->
+    <div class="chart-controls">
+        <div class="control-group">
+            <label for="station-select">1. Seleccione una Estación:</label>
+            <select id="station-select">
+                <option value="">-- Elija una estación --</option>
+                <th:block th:each="estacion : ${estaciones}">
+                    <option th:value="${estacion.stationId}" th:text="${estacion.stationModel}"></option>
+                </th:block>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="sensor-select">2. Seleccione un Sensor:</label>
+            <select id="sensor-select" disabled>
+                <option value="">-- Primero elija una estación --</option>
+            </select>
+        </div>
+        <button id="generate-chart-btn" disabled>📊 Generar Gráfico</button>
+    </div>
+
+    <!-- Contenedor del gráfico -->
+    <div class="chart-container">
+        <canvas id="sensorChart"></canvas>
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const estaciones = /*[[${estaciones}]]*/ [];
+    let myChart = null;
+
+    const stationSelect = document.getElementById('station-select');
+    const sensorSelect = document.getElementById('sensor-select');
+    const generateBtn = document.getElementById('generate-chart-btn');
+
+    stationSelect.addEventListener('change', () => {
+        const stationId = stationSelect.value;
+        sensorSelect.innerHTML = '<option value="">-- Elija un sensor --</option>'; // Reset
+        sensorSelect.disabled = true;
+        generateBtn.disabled = true;
+
+        if (stationId) {
+            const selectedStation = estaciones.find(e => e.stationId == stationId);
+            if (selectedStation && selectedStation.sensores) {
+                selectedStation.sensores.forEach(sensor => {
+                    const option = document.createElement('option');
+                    option.value = sensor.sensorId;
+                    option.textContent = `${sensor.sensorModel} (${sensor.sensorType})`;
+                    option.dataset.unit = sensor.unit; // Guardamos la unidad para usarla en el gráfico
+                    sensorSelect.appendChild(option);
+                });
+                sensorSelect.disabled = false;
+            }
+        }
+    });
+
+    sensorSelect.addEventListener('change', () => {
+        generateBtn.disabled = !sensorSelect.value;
+    });
+
+    generateBtn.addEventListener('click', () => {
+        const sensorId = sensorSelect.value;
+        if (!sensorId) return;
+
+        const selectedOption = sensorSelect.options[sensorSelect.selectedIndex];
+        const sensorName = selectedOption.text;
+        const unit = selectedOption.dataset.unit || '';
+
+        fetch(`/api/sensors/${sensorId}/records`)
+            .then(response => response.json())
+            .then(records => {
+                if (myChart) {
+                    myChart.destroy(); // Destruimos el gráfico anterior si existe
+                }
+
+                const chartData = {
+                    labels: records.map(r => new Date(r.recordDatetime)).reverse(),
+                    datasets: [{
+                        label: `${sensorName} (${unit})`,
+                        data: records.map(r => r.value).reverse(),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                };
+
+                const config = {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: `Historial de datos para ${sensorName}`, font: { size: 18 } },
+                            subtitle: { display: true, text: `Gráfico generado el: ${new Date().toLocaleString()}`, padding: { bottom: 20 } }
+                        },
+                        scales: { x: { type: 'time', time: { unit: 'hour', tooltipFormat: 'yyyy-MM-dd HH:mm:ss', displayFormats: { hour: 'MMM d, HH:mm' } }, title: { display: true, text: 'Fecha y Hora' } }, y: { title: { display: true, text: `Valor (${unit})` } } }
+                    }
+                };
+
+                const ctx = document.getElementById('sensorChart').getContext('2d');
+                myChart = new Chart(ctx, config);
+            })
+            .catch(error => console.error('Error al generar el gráfico:', error));
+    });
+    /*]]>*/
+</script>
+
+</body>
+</html>

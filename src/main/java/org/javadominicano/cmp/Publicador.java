@@ -4,14 +4,16 @@ import com.google.gson.Gson;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.javadominicano.cmp.model.StationModel;
+import org.javadominicano.cmp.Sensor;
+
+import java.util.List;
 
 public class Publicador {
 
     private static final String BROKER_URL = "tcp://mqtt.eict.ce.pucmm.edu.do:1883";
     private MqttClient client;
-    private static DatabaseManager dbManager = new DatabaseManager();
-    private static int[] stationIds = new int[4];
-    private static int[] sensorIds = new int[16]; 
+    private static final DatabaseManager dbManager = new DatabaseManager();
 
     public Publicador(String id) {
         try {
@@ -23,43 +25,38 @@ public class Publicador {
     }
 
     public void enviarMensaje(String topic, String mensaje, Sensor sensor, int sensorId) {
-    System.out.println("Enviando Información Topic: " + topic);
-    try {
-        MqttConnectOptions connectOptions = new MqttConnectOptions();
-        connectOptions.setAutomaticReconnect(true);
-        connectOptions.setCleanSession(false);
-        connectOptions.setUserName("itt363-grupo3");
-        connectOptions.setPassword("CnFebqnjbq7F".toCharArray());
+        try {
+            MqttConnectOptions connectOptions = new MqttConnectOptions();
+            connectOptions.setAutomaticReconnect(true);
+            connectOptions.setCleanSession(false);
+            connectOptions.setUserName("itt363-grupo3");
+            connectOptions.setPassword("CnFebqnjbq7F".toCharArray());
 
-        client.connect(connectOptions);
-        client.publish(topic, mensaje.getBytes(), 2, false);
-        client.disconnect();
-        client.close();
+            client.connect(connectOptions);
+            client.publish(topic, mensaje.getBytes(), 2, false);
+            client.disconnect();
+            client.close();
 
-        dbManager.insertRecord(sensorId, sensor.getTemperatura(), sensor.getFecha());
-    } catch (MqttException e) {
-        e.printStackTrace();
-        System.exit(1);
+            dbManager.insertRecord(sensorId, sensor.getTemperatura(), sensor.getFecha());
+
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
-}
 
     public static void iniciarPrueba() {
-        for (int i = 0; i < 4; i++) {
-            stationIds[i] = dbManager.insertStation("Modelo_E" + (i + 1));
-        }
+        List<StationModel> estaciones = dbManager.getStations();
+        String[] tipos = {"Temperatura", "Humedad", "Presión"};
 
-        String[] tipos = {"Temperatura", "Humedad", "Presión", "Viento"};
-        int contadorSensor = 0;
-
-        for (int est = 0; est < 4; est++) {
+        for (StationModel est : estaciones) {
+            int stationId = est.getStationId();
             for (String tipo : tipos) {
-                String nombreSensor = "Sensor" + tipo.charAt(0) + (est + 1);
+                String nombreSensor = "Sensor" + tipo.charAt(0) + stationId;
                 String idSensor = nombreSensor.toLowerCase();
-                String topic = "/itt363-grupo3/estacion-" + (est + 1) + "/sensores/" + tipo.toLowerCase();
+                String topic = "/itt363-grupo3/estacion-" + stationId + "/sensores/" + tipo.toLowerCase();
                 String unidad = unidadDe(tipo);
-                sensorIds[contadorSensor] = dbManager.insertSensor(stationIds[est], nombreSensor, tipo, unidad);
-                lanzarHiloSensor(idSensor, tipo, topic, sensorIds[contadorSensor]);
-                contadorSensor++;
+                int sensorDBId = dbManager.getOrCreateSensor(stationId, nombreSensor, tipo, unidad);
+                lanzarHiloSensor(idSensor, tipo, topic, sensorDBId);
             }
         }
     }
@@ -84,7 +81,6 @@ public class Publicador {
             case "temperatura" -> "°C";
             case "humedad"     -> "%";
             case "presión"     -> "hPa";
-            case "viento"      -> "km/h";
             default            -> "";
         };
     }

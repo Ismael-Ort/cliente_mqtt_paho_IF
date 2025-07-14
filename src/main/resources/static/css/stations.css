@@ -1,0 +1,311 @@
+/* 🌐 Estructura general */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f3f6fd;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 📚 Sidebar */
+.sidebar {
+    width: 220px;
+    background-color: #1e2a3a;
+    color: white;
+    min-height: 100vh;
+    padding: 1.5rem 1rem;
+}
+
+.sidebar h2 {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar li {
+    margin-bottom: 8px;
+}
+
+.sidebar a {
+    color: #e2e8f0;
+    text-decoration: none;
+    font-weight: 500;
+    display: block;
+    padding: 10px 15px;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar a:hover {
+    color: white;
+    background-color: #2c3a4b;
+    text-decoration: none;
+}
+
+.sidebar a.active {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: bold;
+}
+
+/* 📄 Contenido principal */
+.main-content {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-x: auto;
+}
+
+.main-content h1 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+}
+
+/* ➕ Botón nueva estación */
+.create-button {
+    display: inline-block;
+    background-color: #22c55e;
+    color: white;
+    padding: 10px 20px;
+    margin-bottom: 1.5rem;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.create-button:hover {
+    background-color: #15803d;
+}
+
+/* 📑 Formulario crear/editar */
+.formulario {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 400px;
+    margin-bottom: 2rem;
+}
+
+.formulario label {
+    font-weight: bold;
+    color: #34495e;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.formulario input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.formulario button {
+    padding: 10px 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.formulario button[type="submit"] {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.formulario .cancelar {
+    background-color: #e5e7eb;
+    color: #1e293b;
+}
+
+.formulario button:hover {
+    filter: brightness(0.95);
+}
+
+/* 📋 Tabla de estaciones */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+}
+
+th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+tr:hover {
+    background-color: #f9fafb;
+}
+
+/* 🔧 Acciones */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.actions .edit-button {
+    background-color: #facc15;
+    color: #1e293b;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.actions .edit-button:hover {
+    background-color: #eab308;
+}
+
+.actions .delete-button {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.actions .delete-button:hover {
+    background-color: #dc2626;
+}
+
+/* 🎛️ Sensor Panel */
+.sensor-section {
+    background-color: #f9fafb;
+    padding: 1.5rem;
+    border-left: 5px solid #3b82f6;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.sensor-section h4 {
+    margin-top: 0;
+    color: #1e293b;
+}
+
+.sensor-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.sensor-table th,
+.sensor-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.sensor-table th {
+    background-color: #3b82f6;
+    color: white;
+    text-transform: uppercase;
+}
+
+.sensor-table td {
+    color: #334155;
+}
+
+.sensor-toggle {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.sensor-toggle:hover {
+    filter: brightness(0.95);
+}
+
+/* Estilo basado en el estado del sensor, no en el texto */
+.sensor-toggle.toggle-activo {
+    background-color: #f87171;
+    color: white;
+}
+
+.sensor-toggle.toggle-inactivo {
+    background-color: #10b981; /* Verde para la acción "Habilitar" */
+    color: white;
+}
+
+/* ✅ Estados */
+.activo {
+    color: #16a34a;
+    font-weight: bold;
+}
+
+.inactivo {
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* 🪄 Animación acordeón */
+.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scaleY(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+/* 📱 Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        display: none;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    table, th, td {
+        font-size: 0.9rem;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .actions .edit-button,
+    .actions .delete-button,
+    .sensor-toggle {
+        width: 100%;
+    }
+}

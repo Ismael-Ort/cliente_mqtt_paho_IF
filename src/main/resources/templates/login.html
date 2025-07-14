@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Login | WeatherNet</title>
+    <link rel="stylesheet" href="/css/login.css" />
+</head>
+<body>
+<div class="login-wrapper">
+    <div class="login-container">
+        <h1>🌦️ WeatherNet</h1>
+        <p>Sistema de Gestión de Estaciones Meteorológicas</p>
+        <form th:action="@{/login}" method="post">
+            <input type="text" name="username" placeholder="Correo Electrónico" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">Iniciar Sesión</button>
+        </form>
+        <small>Demo: <strong>admin@weathernet.com</strong> / <strong>admin123</strong></small>
+    </div>
+</div>
+</body>
+</html>

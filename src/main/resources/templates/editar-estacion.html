@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Estación | WeatherNet</title>
+    <link rel="stylesheet" href="/css/station.css" />
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>WeatherNet</h2>
+    <ul>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/dashboard/administrar-estaciones" class="active">Estaciones</a></li>
+        <li><a href="/dashboard/reportes">Reportes</a></li>
+        <li><a href="/dashboard/graficos">Gráficos</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <h1>Editar Estación</h1>
+
+    <form th:action="@{/dashboard/estaciones/actualizar}" th:object="${estacion}" method="post" class="formulario">
+        <input type="hidden" th:field="*{stationId}" />
+
+        <label for="nombre">Nuevo Nombre:</label>
+        <input type="text" id="nombre" th:field="*{stationModel}" required />
+
+        <button type="submit">💾 Guardar Cambios</button>
+        <a href="/dashboard/administrar-estaciones" class="cancelar">Cancelar</a>
+    </form>
+</div>
+
+</body>
+</html>
