@@ -202,6 +202,7 @@ function cargarDashboard() {
 
     fetch("/api/alertas")
         .then(res => res.json())
+
         .then(renderAlertas)
         .catch(() => {
             document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
@@ -220,6 +221,99 @@ function connectWs() {
         });
         stompClient.subscribe('/topic/alertas', msg => {
             renderAlertas(JSON.parse(msg.body));
+
+
+        .then(renderAlertas)
+        .catch(() => {
+            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
+            document.getElementById("alertas-pagination").innerHTML = "";
+        });
+}
+
+let stompClient = null;
+
+function connectWs() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/status', msg => {
+            renderEstaciones(JSON.parse(msg.body));
+        });
+        stompClient.subscribe('/topic/alertas', msg => {
+            renderAlertas(JSON.parse(msg.body));
+
+        .then(alertas => {
+            const alertasDiv = document.getElementById("alertas-container");
+            const pagDiv = document.getElementById("alertas-pagination");
+            if (alertas.length === 0) {
+                alertasDiv.innerHTML = "<p>✅ No hay alertas activas.</p>";
+                pagDiv.innerHTML = "";
+                return;
+            }
+
+            const itemsPorPagina = 5;
+            let paginaActual = 1;
+            const totalPaginas = Math.ceil(alertas.length / itemsPorPagina);
+
+            function render() {
+                let html = `
+                <table class="alert-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estación</th>
+                            <th>Sensor</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Mensaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                const start = (paginaActual - 1) * itemsPorPagina;
+                alertas.slice(start, start + itemsPorPagina).forEach(a => {
+                    html += `
+                    <tr>
+                        <td>${new Date(a.fecha).toLocaleString()}</td>
+                        <td>${a.nombreEstacion}</td>
+                        <td>${a.sensorNombre}</td>
+                        <td>${a.tipoSensor}</td>
+                        <td>${a.valor}</td>
+                        <td>${a.mensaje}</td>
+                    </tr>`;
+                });
+
+                html += `</tbody></table>`;
+                alertasDiv.innerHTML = html;
+
+                let pagHtml = `
+                    <button class="prev-page" ${paginaActual === 1 ? 'disabled' : ''}>Anterior</button>
+                    <span>${paginaActual} / ${totalPaginas}</span>
+                    <button class="next-page" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+                pagDiv.innerHTML = pagHtml;
+
+                pagDiv.querySelector('.prev-page').onclick = () => {
+                    if (paginaActual > 1) {
+                        paginaActual--;
+                        render();
+                    }
+                };
+                pagDiv.querySelector('.next-page').onclick = () => {
+                    if (paginaActual < totalPaginas) {
+                        paginaActual++;
+                        render();
+                    }
+                };
+            }
+
+            render();
+        })
+        .catch(err => {
+            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
+            document.getElementById("alertas-pagination").innerHTML = "";
+            console.error(err);
+
+
         });
     });
 }
