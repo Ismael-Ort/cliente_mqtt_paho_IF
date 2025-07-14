@@ -50,7 +50,25 @@
 
     <!-- 🌐 Estaciones por tarjeta -->
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
-    <div id="summary" class="cards-container"></div>
+    <div id="summary" class="cards-container">
+        <div th:each="est : ${resumen}"
+             th:class="${'station-card' + (est.status == 'DESCONECTADA' ? ' offline' : '')}">
+            <h3 th:text="${est.stationName}"></h3>
+            <p><strong>Estado:</strong> <span th:text="${est.status}"></span></p>
+            <p>
+                <strong>Última lectura:</strong><br>
+                <span th:text="${est.lastUpdate != null ? #dates.format(est.lastUpdate,'dd/MM/yyyy HH:mm:ss') : 'No disponible'}"></span>
+            </p>
+            <ul>
+                <li>🌡️ Temperatura: <span th:text="${est.data['temperatura']} ?: 'N/D'"></span> °C</li>
+                <li>💧 Humedad: <span th:text="${est.data['humedad']} ?: 'N/D'"></span> %</li>
+                <li>⬇️ Presión: <span th:text="${est.data['presion']} ?: 'N/D'"></span> hPa</li>
+                <li>💨 Viento: <span th:text="${est.data['viento']} ?: 'N/D'"></span> m/s</li>
+                <li>🌧️ Precipitación: <span th:text="${est.data['precipitacion']} ?: 'N/D'"></span> mm</li>
+                <li>🌱 Humedad Suelo: <span th:text="${est.data['humedad_suelo']} ?: 'N/D'"></span> %</li>
+            </ul>
+        </div>
+    </div>
 
     <!-- 🔘 Botón de actualización -->
     <div style="margin: 1rem 0;">
@@ -204,6 +222,26 @@ function connectWs() {
         stompClient.subscribe('/topic/alertas', msg => {
             renderAlertas(JSON.parse(msg.body));
 
+
+        .then(renderAlertas)
+        .catch(() => {
+            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
+            document.getElementById("alertas-pagination").innerHTML = "";
+        });
+}
+
+let stompClient = null;
+
+function connectWs() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/status', msg => {
+            renderEstaciones(JSON.parse(msg.body));
+        });
+        stompClient.subscribe('/topic/alertas', msg => {
+            renderAlertas(JSON.parse(msg.body));
+
         .then(alertas => {
             const alertasDiv = document.getElementById("alertas-container");
             const pagDiv = document.getElementById("alertas-pagination");
@@ -274,6 +312,7 @@ function connectWs() {
             document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
             document.getElementById("alertas-pagination").innerHTML = "";
             console.error(err);
+
 
         });
     });
