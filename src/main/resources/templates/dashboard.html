@@ -13,26 +13,21 @@
     <ul>
         <li><a href="/dashboard" class="active">Dashboard</a></li>
 
-        <!-- Solo ADMIN ve esto -->
         <li sec:authorize="hasRole('ADMIN')">
             <a href="/dashboard/administrar-estaciones">Estaciones</a>
         </li>
 
-        <!-- Ambos roles pueden ver reportes -->
         <li sec:authorize="hasAnyRole('ADMIN', 'USER')">
             <a href="/dashboard/reportes">Reportes</a>
         </li>
 
-        <!-- Gráficos -->
         <li sec:authorize="hasAnyRole('ADMIN', 'USER')">
             <a href="/dashboard/graficos">Gráficos</a>
         </li>
     </ul>
 
-    <!-- Separador -->
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
 
-    <!-- Cerrar sesión -->
     <ul>
         <li>
             <form th:action="@{/logout}" method="post">
@@ -45,10 +40,8 @@
 <div class="main-content">
     <h1>Dashboard</h1>
 
-    <!-- 🧾 Resumen de estado general -->
     <div id="resumen-general" class="cards-container"></div>
 
-    <!-- 🌐 Estaciones por tarjeta -->
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
     <div id="summary" class="cards-container">
         <div th:each="est : ${resumen}"
@@ -70,14 +63,12 @@
         </div>
     </div>
 
-    <!-- 🔘 Botón de actualización -->
     <div style="margin: 1rem 0;">
         <button onclick="cargarDashboard()" style="padding: 8px 16px; font-weight: bold;">
             🔄 Actualizar Datos
         </button>
     </div>
 
-    <!-- 📢 Alertas recientes -->
     <h2 style="margin-top: 2rem;">📢 Alertas recientes</h2>
     <div id="alertas-container">
         <p>Cargando alertas...</p>
@@ -202,7 +193,6 @@ function cargarDashboard() {
 
     fetch("/api/alertas")
         .then(res => res.json())
-
         .then(renderAlertas)
         .catch(() => {
             document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
@@ -210,110 +200,18 @@ function cargarDashboard() {
         });
 }
 
-let stompClient = null;
-
 function connectWs() {
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
     stompClient.connect({}, () => {
         stompClient.subscribe('/topic/status', msg => {
-            renderEstaciones(JSON.parse(msg.body));
+            const estaciones = JSON.parse(msg.body);
+            renderEstaciones(estaciones);
         });
+
         stompClient.subscribe('/topic/alertas', msg => {
-            renderAlertas(JSON.parse(msg.body));
-
-
-        .then(renderAlertas)
-        .catch(() => {
-            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
-            document.getElementById("alertas-pagination").innerHTML = "";
-        });
-}
-
-let stompClient = null;
-
-function connectWs() {
-    const socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
-    stompClient.connect({}, () => {
-        stompClient.subscribe('/topic/status', msg => {
-            renderEstaciones(JSON.parse(msg.body));
-        });
-        stompClient.subscribe('/topic/alertas', msg => {
-            renderAlertas(JSON.parse(msg.body));
-
-        .then(alertas => {
-            const alertasDiv = document.getElementById("alertas-container");
-            const pagDiv = document.getElementById("alertas-pagination");
-            if (alertas.length === 0) {
-                alertasDiv.innerHTML = "<p>✅ No hay alertas activas.</p>";
-                pagDiv.innerHTML = "";
-                return;
-            }
-
-            const itemsPorPagina = 5;
-            let paginaActual = 1;
-            const totalPaginas = Math.ceil(alertas.length / itemsPorPagina);
-
-            function render() {
-                let html = `
-                <table class="alert-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Estación</th>
-                            <th>Sensor</th>
-                            <th>Tipo</th>
-                            <th>Valor</th>
-                            <th>Mensaje</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-                const start = (paginaActual - 1) * itemsPorPagina;
-                alertas.slice(start, start + itemsPorPagina).forEach(a => {
-                    html += `
-                    <tr>
-                        <td>${new Date(a.fecha).toLocaleString()}</td>
-                        <td>${a.nombreEstacion}</td>
-                        <td>${a.sensorNombre}</td>
-                        <td>${a.tipoSensor}</td>
-                        <td>${a.valor}</td>
-                        <td>${a.mensaje}</td>
-                    </tr>`;
-                });
-
-                html += `</tbody></table>`;
-                alertasDiv.innerHTML = html;
-
-                let pagHtml = `
-                    <button class="prev-page" ${paginaActual === 1 ? 'disabled' : ''}>Anterior</button>
-                    <span>${paginaActual} / ${totalPaginas}</span>
-                    <button class="next-page" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
-                pagDiv.innerHTML = pagHtml;
-
-                pagDiv.querySelector('.prev-page').onclick = () => {
-                    if (paginaActual > 1) {
-                        paginaActual--;
-                        render();
-                    }
-                };
-                pagDiv.querySelector('.next-page').onclick = () => {
-                    if (paginaActual < totalPaginas) {
-                        paginaActual++;
-                        render();
-                    }
-                };
-            }
-
-            render();
-        })
-        .catch(err => {
-            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
-            document.getElementById("alertas-pagination").innerHTML = "";
-            console.error(err);
-
-
+            const alertas = JSON.parse(msg.body);
+            renderAlertas(alertas);
         });
     });
 }
