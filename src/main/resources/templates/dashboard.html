@@ -177,8 +177,14 @@
                 <input type="number" step="any" id="rule-valor" placeholder="Ej: 25.5" required />
             </div>
             <div class="form-group form-group-full">
-                <label for="rule-mensaje">Mensaje de la Alerta</label>
-                <input type="text" id="rule-mensaje" placeholder="Ej: Temperatura demasiado alta en el invernadero" required />
+                <label for="rule-mensaje">Nivel de la Alerta</label>
+                <select id="rule-mensaje" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="Muy baja">Muy baja</option>
+                    <option value="Baja">Baja</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Muy alta">Muy alta</option>
+                </select>
             </div>
             <div class="form-group"><button type="submit" id="crear-regla-btn">Crear Regla</button></div>
         </form>
@@ -391,7 +397,7 @@ document.getElementById('rule-form').addEventListener('submit', e => {
     .then(response => {
         if (response.ok) {
             alert('¡Regla de alerta creada exitosamente! La alerta se activará cuando se cumpla la condición.');
-            document.getElementById('rule-mensaje').value = '';
+            document.getElementById('rule-mensaje').selectedIndex = 0;
             valorInput.value = '';
         } else {
             alert('Hubo un error al crear la regla. Por favor, inténtelo de nuevo.');
