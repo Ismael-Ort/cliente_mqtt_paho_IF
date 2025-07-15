@@ -206,27 +206,6 @@ let stompClient = null;
 function connectWs() {
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
-    stompClient.connect({}, () => {
-        stompClient.subscribe('/topic/status', msg => {
-            renderEstaciones(JSON.parse(msg.body));
-        });
-        stompClient.subscribe('/topic/alertas', msg => {
-            renderAlertas(JSON.parse(msg.body));
-
-
-        });
-    });
-}
-
-
-window.onload = () => {
-    cargarDashboard();
-    connectWs();
-};
-
-function connectWs() {
-    const socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
 
     // Añadimos heart-beating para mantener la conexión activa en segundo plano.
     // El cliente enviará un "ping" cada 10 segundos para evitar que la conexión
