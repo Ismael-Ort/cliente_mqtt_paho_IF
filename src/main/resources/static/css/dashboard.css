@@ -384,6 +384,15 @@ h1, h2, h3 {
     background-color: #f3f6fd;
 }
 
+
+/* ===== Alert Section ===== */
+.alert-form {
+    margin-top: 1rem;
+}
+
+.alert-form select,
+.alert-form input {
+
 /* ===== Sidebar Alert Section ===== */
 .sidebar .alertas-content {
     max-height: 300px;
@@ -397,6 +406,7 @@ h1, h2, h3 {
 
 .sidebar-alert-form select,
 .sidebar-alert-form input {
+
     width: 100%;
     padding: 6px;
     margin-bottom: 0.5rem;
@@ -404,7 +414,11 @@ h1, h2, h3 {
     border-radius: 4px;
 }
 
+.alert-form button {
+
+
 .sidebar-alert-form button {
+
     width: 100%;
     padding: 8px;
     background-color: #3b82f6;
@@ -415,6 +429,10 @@ h1, h2, h3 {
     cursor: pointer;
 }
 
+.alert-form button:hover {
+
+
 .sidebar-alert-form button:hover {
+
     background-color: #2563eb;
 }
