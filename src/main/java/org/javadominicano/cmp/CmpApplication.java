@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"org.javadominicano.cmp", "com.weathernet"})
 @EnableScheduling
 public class CmpApplication implements CommandLineRunner {
 

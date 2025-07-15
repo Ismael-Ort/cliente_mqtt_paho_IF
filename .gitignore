@@ -67,3 +67,9 @@ fabric.properties
 # Editor-based Rest Client
 .idea/httpRequests
 .lck
+
+# Project artifacts
+/bin/
+*.class
+.idea/
+sensorv2-tcpmqtteictcepucmmedudo1883/
