@@ -6,6 +6,8 @@
     <link rel="stylesheet" href="/css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2/dist/stomp.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <style>
         /* Estilos para el formulario de creación de alertas */
         .alert-form-container h3 {
@@ -392,30 +394,57 @@ document.getElementById('alert-form').addEventListener('submit', e => {
 });
 
 function connectWs() {
-    const socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
+    const startStompConnection = () => {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
 
-    // Añadimos heart-beating para mantener la conexión activa en segundo plano.
-    // El cliente enviará un "ping" cada 10 segundos para evitar que la conexión
-    // sea cerrada por inactividad por proxies o por el propio navegador.
-    stompClient.heartbeat.outgoing = 10000;
-    stompClient.heartbeat.incoming = 0; // No esperamos heartbeats del servidor
+        // Añadimos heart-beating para mantener la conexión activa en segundo plano.
+        stompClient.heartbeat.outgoing = 10000;
+        stompClient.heartbeat.incoming = 0; // No esperamos heartbeats del servidor
 
-    stompClient.connect({}, () => {
-        stompClient.subscribe('/topic/status', msg => {
-            const estaciones = JSON.parse(msg.body);
-            renderEstaciones(estaciones);
-        });
-        stompClient.subscribe('/topic/alertas', msg => {
-            const nuevaAlerta = JSON.parse(msg.body);
-            // Añadimos la nueva alerta al principio de la lista para que aparezca inmediatamente.
-            alertasData.unshift(nuevaAlerta);
-            // Nos movemos a la primera página para ver la alerta más reciente.
-            paginaActual = 1;
-            // Actualizamos la vista de la tabla.
-            renderAlertasTabla();
-        });
-    });
+        stompClient.connect({}, 
+            // Callback de conexión exitosa
+            () => {
+                console.log('WebSocket conectado exitosamente.');
+                stompClient.subscribe('/topic/status', msg => {
+                    const estaciones = JSON.parse(msg.body);
+                    renderEstaciones(estaciones);
+                });
+                stompClient.subscribe('/topic/alertas', msg => {
+                    const nuevaAlerta = JSON.parse(msg.body);
+                    alertasData.unshift(nuevaAlerta);
+                    paginaActual = 1;
+                    renderAlertasTabla();
+
+                    mostrarNotificacion(nuevaAlerta);
+                });                
+            },
+            // Callback de error/desconexión
+            (error) => {
+                console.error('Error de conexión WebSocket:', error);
+                setTimeout(startStompConnection, 5000); // Intentar reconectar en 5 segundos
+            }
+        );        
+        // SockJS también tiene un evento onclose que podemos usar como respaldo
+        socket.onclose = () => {
+            console.log('Conexión WebSocket cerrada. Intentando reconectar en 5 segundos...');
+            setTimeout(startStompConnection, 5000);
+        };
+    };
+    startStompConnection();
+}
+
+let toastTimeout;
+function mostrarNotificacion(alerta) {
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        Toastify({
+            text: `¡Nueva Alerta! ${alerta.mensaje} (Estación: ${alerta.nombreEstacion})`,
+            duration: 5000, close: true, gravity: "top", position: "right",
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+            onClick: function(){}
+        }).showToast();
+    }, 500);
 }
 
 // Usamos la API de Visibilidad de Página para recargar los datos cuando la pestaña vuelve a estar activa.
