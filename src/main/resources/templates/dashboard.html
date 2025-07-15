@@ -6,6 +6,65 @@
     <link rel="stylesheet" href="/css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2/dist/stomp.min.js"></script>
+    <style>
+        /* Estilos para el formulario de creación de alertas */
+        .alert-form-container h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            color: #334155;
+        }
+
+        .alert-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background-color: #f8fafc; /* slate-50 */
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0; /* slate-200 */
+        }
+
+        .alert-form .form-group {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-width: 180px; /* Ancho mínimo para cada campo */
+        }
+
+        .alert-form .form-group-full {
+            flex-basis: 100%; /* Ocupa todo el ancho */
+        }
+
+        .alert-form label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #475569; /* slate-600 */
+        }
+
+        .alert-form select,
+        .alert-form input {
+            padding: 0.65rem;
+            border: 1px solid #cbd5e1; /* slate-300 */
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 100%;
+            box-sizing: border-box; /* Importante para que el padding no afecte el ancho */
+        }
+
+        .alert-form select:disabled {
+            background-color: #e2e8f0; /* slate-200 */
+            cursor: not-allowed;
+        }
+
+        .alert-form button { padding: 0.75rem 1.5rem; border: none; border-radius: 6px; background-color: #3b82f6; /* blue-500 */ color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; width: 100%; margin-top: 1.7rem; /* Para alinear con los inputs que tienen label */ }
+        .alert-form button:hover { background-color: #2563eb; /* blue-600 */ }
+        .alert-form button:disabled {
+            background-color: #9ca3af; /* gray-400 */
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 <div class="sidebar">
@@ -31,19 +90,6 @@
     <ul>
         <li><a href="#alertas-section">Alertas</a></li>
     </ul>
-
-    <h3>Alertas</h3>
-    <div id="alertas-container" class="alertas-content">
-        <p>Cargando alertas...</p>
-    </div>
-    <div id="alertas-pagination" class="pagination"></div>
-    <form id="alert-form" class="sidebar-alert-form">
-        <select id="alert-station-select"><option value="">Estación...</option></select>
-        <select id="alert-sensor-select" disabled><option value="">Sensor...</option></select>
-        <input type="number" id="alert-valor" placeholder="Umbral" required />
-        <input type="text" id="alert-mensaje" placeholder="Mensaje" required />
-        <button type="submit">Crear Alerta</button>
-    </form>
 
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
 
@@ -94,15 +140,29 @@
         <p>Cargando alertas...</p>
     </div>
     <div id="alertas-pagination" class="pagination"></div>
-    <form id="alert-form" class="alert-form">
-        <select id="alert-station-select"><option value="">Estación...</option></select>
-        <select id="alert-sensor-select" disabled><option value="">Sensor...</option></select>
-        <input type="number" id="alert-valor" placeholder="Umbral" required />
-        <input type="text" id="alert-mensaje" placeholder="Mensaje" required />
-        <button type="submit">Crear Alerta</button>
-    </form>
 
-
+    <div class="alert-form-container">
+        <h3>➕ Crear Nueva Alerta</h3>
+        <form id="alert-form" class="alert-form">
+            <div class="form-group">
+                <label for="alert-station-select">Estación</label>
+                <select id="alert-station-select" required><option value="">Seleccionar...</option></select>
+            </div>
+            <div class="form-group">
+                <label for="alert-sensor-select">Sensor</label>
+                <select id="alert-sensor-select" disabled required><option value="">Seleccionar...</option></select>
+            </div>
+            <div class="form-group">
+                <label for="alert-valor">Umbral</label>
+                <input type="number" step="any" id="alert-valor" placeholder="Ej: 25.5" required />
+            </div>
+            <div class="form-group form-group-full">
+                <label for="alert-mensaje">Mensaje</label>
+                <input type="text" id="alert-mensaje" placeholder="Ej: Temperatura demasiado alta" required />
+            </div>
+            <div class="form-group"><button type="submit" id="crear-alerta-btn">Crear Alerta</button></div>
+        </form>
+    </div>
 
 </div>
 
@@ -198,6 +258,17 @@ function renderAlertas(alertas) {
     renderAlertasTabla();
 }
 
+function cargarAlertas() {
+    fetch("/api/alertas")
+        .then(res => res.json())
+        .then(renderAlertas)
+        .catch(() => {
+            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
+            document.getElementById("alertas-pagination").innerHTML = "";
+
+        });
+}
+
 function cargarDashboard() {
     fetch("/api/stations/summary")
         .then(res => res.json())
@@ -221,14 +292,7 @@ function cargarDashboard() {
             document.getElementById("summary").innerHTML = "<p>Error cargando estaciones.</p>";
         });
 
-    fetch("/api/alertas")
-        .then(res => res.json())
-        .then(renderAlertas)
-        .catch(() => {
-            document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
-            document.getElementById("alertas-pagination").innerHTML = "";
-
-        });
+    cargarAlertas();
 }
 
 let stompClient = null;
@@ -237,7 +301,7 @@ function cargarEstacionesForm() {
         .then(res => res.json())
         .then(estaciones => {
             const sel = document.getElementById('alert-station-select');
-            sel.innerHTML = '<option value="">Estaci\u00f3n...</option>';
+            sel.innerHTML = '<option value="">Seleccionar...</option>';
             estaciones.forEach(e => {
                 const opt = document.createElement('option');
                 opt.value = e.stationId;
@@ -252,13 +316,13 @@ document.getElementById('alert-station-select').addEventListener('change', e => 
     const sensorSel = document.getElementById('alert-sensor-select');
     if (!id) {
         sensorSel.disabled = true;
-        sensorSel.innerHTML = '<option value="">Sensor...</option>';
+        sensorSel.innerHTML = '<option value="">Seleccionar...</option>';
         return;
     }
     fetch(`/api/stations/${id}/sensors`)
         .then(res => res.json())
         .then(sensores => {
-            sensorSel.innerHTML = '<option value="">Sensor...</option>';
+            sensorSel.innerHTML = '<option value="">Seleccionar...</option>';
             sensores.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.sensorId;
@@ -271,17 +335,52 @@ document.getElementById('alert-station-select').addEventListener('change', e => 
 
 document.getElementById('alert-form').addEventListener('submit', e => {
     e.preventDefault();
+
+    const valorInput = document.getElementById('alert-valor');
+    const valor = valorInput.value.trim();
+
+    // Validación del campo Umbral
+    if (valor === '' || isNaN(parseFloat(valor))) {
+        alert('Por favor, ingrese un valor numérico válido para el Umbral.');
+        valorInput.focus();
+        return; // Detiene el envío si la validación falla
+    }
+
+    const submitBtn = document.getElementById('crear-alerta-btn');
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creando...';
+
     const stationId = document.getElementById('alert-station-select').value;
     const sensorId = document.getElementById('alert-sensor-select').value;
-    const valor = document.getElementById('alert-valor').value;
     const mensaje = document.getElementById('alert-mensaje').value;
+
     fetch('/api/alertas/manual', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `stationId=${stationId}&sensorId=${sensorId}&umbral=${valor}&mensaje=${encodeURIComponent(mensaje)}`
-    }).then(() => {
-        document.getElementById('alert-mensaje').value = '';
-        document.getElementById('alert-valor').value = '';
+        body: `stationId=${stationId}&sensorId=${sensorId}&umbral=${valor}&mensaje=${encodeURIComponent(mensaje)}` // Usamos la variable 'valor' validada
+    })
+    .then(response => {
+        if (response.ok) {
+            document.getElementById('alert-mensaje').value = '';
+            valorInput.value = ''; // Limpiamos el campo usando la referencia
+            cargarAlertas(); // Actualizamos la tabla de alertas automáticamente
+            // Opcionalmente, podrías resetear los selects también si lo deseas
+            // document.getElementById('alert-station-select').value = "";
+            // const sensorSelect = document.getElementById('alert-sensor-select');
+            // sensorSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            // sensorSelect.disabled = true;
+        } else {
+            alert('Hubo un error al crear la alerta. Por favor, inténtelo de nuevo.');
+        }
+    })
+    .catch(error => {
+        console.error('Error al enviar el formulario:', error);
+        alert('Error de red. No se pudo crear la alerta.');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
     });
 });
 
