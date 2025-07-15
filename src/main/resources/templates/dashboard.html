@@ -293,6 +293,7 @@ function cargarDashboard() {
         });
 
     cargarAlertas();
+    cargarEstacionesForm();
 }
 
 let stompClient = null;
@@ -308,6 +309,12 @@ function cargarEstacionesForm() {
                 opt.textContent = e.stationModel;
                 sel.appendChild(opt);
             });
+        })
+        .catch(error => {
+            console.error('Error al cargar estaciones para el formulario:', error);
+            const sel = document.getElementById('alert-station-select');
+            sel.innerHTML = '<option value="">Error al cargar</option>';
+            sel.disabled = true;
         });
 }
 
@@ -400,8 +407,13 @@ function connectWs() {
             renderEstaciones(estaciones);
         });
         stompClient.subscribe('/topic/alertas', msg => {
-            const alertas = JSON.parse(msg.body);
-            renderAlertas(alertas);
+            const nuevaAlerta = JSON.parse(msg.body);
+            // Añadimos la nueva alerta al principio de la lista para que aparezca inmediatamente.
+            alertasData.unshift(nuevaAlerta);
+            // Nos movemos a la primera página para ver la alerta más reciente.
+            paginaActual = 1;
+            // Actualizamos la vista de la tabla.
+            renderAlertasTabla();
         });
     });
 }
@@ -418,7 +430,6 @@ document.addEventListener('visibilitychange', () => {
 window.onload = () => {
     cargarDashboard();
     connectWs();
-    cargarEstacionesForm();
 }
 
 </script>
