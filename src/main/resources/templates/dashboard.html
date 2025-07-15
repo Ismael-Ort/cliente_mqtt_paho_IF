@@ -27,9 +27,24 @@
     </ul>
 
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
+
     <ul>
         <li><a href="#alertas-section">Alertas</a></li>
     </ul>
+
+    <h3>Alertas</h3>
+    <div id="alertas-container" class="alertas-content">
+        <p>Cargando alertas...</p>
+    </div>
+    <div id="alertas-pagination" class="pagination"></div>
+    <form id="alert-form" class="sidebar-alert-form">
+        <select id="alert-station-select"><option value="">Estación...</option></select>
+        <select id="alert-sensor-select" disabled><option value="">Sensor...</option></select>
+        <input type="number" id="alert-valor" placeholder="Umbral" required />
+        <input type="text" id="alert-mensaje" placeholder="Mensaje" required />
+        <button type="submit">Crear Alerta</button>
+    </form>
+
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
 
     <ul>
@@ -73,6 +88,7 @@
         </button>
     </div>
 
+
     <h2 id="alertas-section" style="margin-top: 2rem;">📢 Alertas recientes</h2>
     <div id="alertas-container" class="alertas-content">
         <p>Cargando alertas...</p>
@@ -85,6 +101,8 @@
         <input type="text" id="alert-mensaje" placeholder="Mensaje" required />
         <button type="submit">Crear Alerta</button>
     </form>
+
+
 
 </div>
 

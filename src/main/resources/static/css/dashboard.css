@@ -384,6 +384,7 @@ h1, h2, h3 {
     background-color: #f3f6fd;
 }
 
+
 /* ===== Alert Section ===== */
 .alert-form {
     margin-top: 1rem;
@@ -391,13 +392,33 @@ h1, h2, h3 {
 
 .alert-form select,
 .alert-form input {
+
+/* ===== Sidebar Alert Section ===== */
+.sidebar .alertas-content {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+}
+
+.sidebar .sidebar-alert-form {
+    margin-top: 1rem;
+}
+
+.sidebar-alert-form select,
+.sidebar-alert-form input {
+
     width: 100%;
     padding: 6px;
     margin-bottom: 0.5rem;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
 }
+
 .alert-form button {
+
+
+.sidebar-alert-form button {
+
     width: 100%;
     padding: 8px;
     background-color: #3b82f6;
@@ -407,6 +428,11 @@ h1, h2, h3 {
     font-weight: bold;
     cursor: pointer;
 }
+
 .alert-form button:hover {
+
+
+.sidebar-alert-form button:hover {
+
     background-color: #2563eb;
 }
