@@ -383,3 +383,30 @@ h1, h2, h3 {
 .data-table tbody tr:hover {
     background-color: #f3f6fd;
 }
+
+/* ===== Alert Section ===== */
+.alert-form {
+    margin-top: 1rem;
+}
+
+.alert-form select,
+.alert-form input {
+    width: 100%;
+    padding: 6px;
+    margin-bottom: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+}
+.alert-form button {
+    width: 100%;
+    padding: 8px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.alert-form button:hover {
+    background-color: #2563eb;
+}
