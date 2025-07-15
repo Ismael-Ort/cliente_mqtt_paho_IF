@@ -463,6 +463,12 @@ public class EstacionController {
         dbManager.toggleSensorActivo(id);
         return "redirect:/dashboard/administrar-estaciones";
     }
+    @PostMapping("/api/alertas/manual")
+    @ResponseBody
+    public void crearAlertaManual(@RequestParam int stationId, @RequestParam int sensorId, @RequestParam double umbral, @RequestParam String mensaje) {
+        dbManager.insertAlert(stationId, sensorId, umbral, mensaje);
+    }
+
 
     @GetMapping("/dashboard/graficos")
     public String verGraficos(Model model) {

@@ -27,6 +27,19 @@
     </ul>
 
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
+    <h3>Alertas</h3>
+    <div id="alertas-container" class="alertas-content">
+        <p>Cargando alertas...</p>
+    </div>
+    <div id="alertas-pagination" class="pagination"></div>
+    <form id="alert-form" class="sidebar-alert-form">
+        <select id="alert-station-select"><option value="">Estación...</option></select>
+        <select id="alert-sensor-select" disabled><option value="">Sensor...</option></select>
+        <input type="number" id="alert-valor" placeholder="Umbral" required />
+        <input type="text" id="alert-mensaje" placeholder="Mensaje" required />
+        <button type="submit">Crear Alerta</button>
+    </form>
+    <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
 
     <ul>
         <li>
@@ -40,7 +53,7 @@
 <div class="main-content">
     <h1>Dashboard</h1>
 
-    <div id="resumen-general" class="cards-container"></div>
+    <div id="resumen-general" class="card-grid small-cards"></div>
 
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
     <div id="summary" class="cards-container">
@@ -69,11 +82,6 @@
         </button>
     </div>
 
-    <h2 style="margin-top: 2rem;">📢 Alertas recientes</h2>
-    <div id="alertas-container">
-        <p>Cargando alertas...</p>
-    </div>
-    <div id="alertas-pagination" class="pagination"></div>
 </div>
 
 <script>
@@ -174,10 +182,10 @@ function cargarDashboard() {
         .then(data => {
             const container = document.getElementById("resumen-general");
             const html = `
-                <div class="card">Total Estaciones: ${data.total}</div>
-                <div class="card">En Línea: ${data.enLinea}</div>
-                <div class="card">Desconectadas: ${data.desconectadas}</div>
-                <div class="card alerta">Alarmas Activas: ${data.alertasActivas}</div>`;
+                <div class="info-card"><span>Total Estaciones</span><span>${data.total}</span></div>
+                <div class="info-card success"><span>En Línea</span><span>${data.enLinea}</span></div>
+                <div class="info-card warning"><span>Desconectadas</span><span>${data.desconectadas}</span></div>
+                <div class="info-card danger"><span>Alarmas Activas</span><span>${data.alertasActivas}</span></div>`;
             container.innerHTML = html;
         })
         .catch(() => {
@@ -202,6 +210,58 @@ function cargarDashboard() {
 }
 
 let stompClient = null;
+function cargarEstacionesForm() {
+    fetch('/api/stations')
+        .then(res => res.json())
+        .then(estaciones => {
+            const sel = document.getElementById('alert-station-select');
+            sel.innerHTML = '<option value="">Estaci\u00f3n...</option>';
+            estaciones.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e.stationId;
+                opt.textContent = e.stationModel;
+                sel.appendChild(opt);
+            });
+        });
+}
+
+document.getElementById('alert-station-select').addEventListener('change', e => {
+    const id = e.target.value;
+    const sensorSel = document.getElementById('alert-sensor-select');
+    if (!id) {
+        sensorSel.disabled = true;
+        sensorSel.innerHTML = '<option value="">Sensor...</option>';
+        return;
+    }
+    fetch(`/api/stations/${id}/sensors`)
+        .then(res => res.json())
+        .then(sensores => {
+            sensorSel.innerHTML = '<option value="">Sensor...</option>';
+            sensores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.sensorId;
+                opt.textContent = s.sensorModel;
+                sensorSel.appendChild(opt);
+            });
+            sensorSel.disabled = false;
+        });
+});
+
+document.getElementById('alert-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const stationId = document.getElementById('alert-station-select').value;
+    const sensorId = document.getElementById('alert-sensor-select').value;
+    const valor = document.getElementById('alert-valor').value;
+    const mensaje = document.getElementById('alert-mensaje').value;
+    fetch('/api/alertas/manual', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `stationId=${stationId}&sensorId=${sensorId}&umbral=${valor}&mensaje=${encodeURIComponent(mensaje)}`
+    }).then(() => {
+        document.getElementById('alert-mensaje').value = '';
+        document.getElementById('alert-valor').value = '';
+    });
+});
 
 function connectWs() {
     const socket = new SockJS('/ws');
@@ -237,6 +297,7 @@ document.addEventListener('visibilitychange', () => {
 window.onload = () => {
     cargarDashboard();
     connectWs();
+    cargarEstacionesForm();
 }
 
 </script>
