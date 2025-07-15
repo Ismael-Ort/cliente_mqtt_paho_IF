@@ -35,7 +35,7 @@ dependencies {
     // Para simplificar el código con Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
+    
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'mysql:mysql-connector-java:8.0.33'
@@ -48,6 +48,8 @@ dependencies {
     // Tests
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
 }
 
 tasks.named('test') {
