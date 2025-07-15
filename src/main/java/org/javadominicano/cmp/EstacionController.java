@@ -269,7 +269,7 @@ public class EstacionController {
         dbManager.getOrCreateSensor(stationId, "Sensor_Precipitacion", "precipitacion", "mm");
         dbManager.getOrCreateSensor(stationId, "Sensor_HumedadSuelo", "humedad_suelo", "%");
 
-        return "redirect:/dashboard/administrar-estaciones?success=creado";
+        return "redirect:/dashboard/administrar-estaciones";
     }
 
 
@@ -285,14 +285,14 @@ public class EstacionController {
     @PreAuthorize("hasRole('ADMIN')")
     public String actualizarEstacion(@ModelAttribute StationModel estacion) {
         dbManager.updateStation(estacion);
-        return "redirect:/dashboard/administrar-estaciones?success=actualizado";
+        return "redirect:/dashboard/administrar-estaciones";
     }
 
     @PostMapping("/dashboard/estaciones/borrar/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public String borrarEstacion(@PathVariable int id) {
         dbManager.deleteStation(id);
-        return "redirect:/dashboard/administrar-estaciones?success=borrado";
+        return "redirect:/dashboard/administrar-estaciones";
     }
 
     @GetMapping("/dashboard/reportes")

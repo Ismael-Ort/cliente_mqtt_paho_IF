@@ -174,33 +174,6 @@
         const div = document.getElementById("sensorMenu-" + id);
         div.classList.toggle("hidden");
     }
-
-    // Mostrar alerta luego de las acciones de crear/actualizar/borrar
-    document.addEventListener('DOMContentLoaded', () => {
-        const params = new URLSearchParams(window.location.search);
-        const success = params.get('success');
-        if (success) {
-            let msg = '';
-            switch (success) {
-                case 'creado':
-                    msg = 'Estación creada correctamente';
-                    break;
-                case 'actualizado':
-                    msg = 'Estación actualizada correctamente';
-                    break;
-                case 'borrado':
-                    msg = 'Estación eliminada correctamente';
-                    break;
-            }
-            if (msg) {
-                alert(msg);
-            }
-            // Eliminar el parámetro para evitar mostrar la alerta al recargar
-            params.delete('success');
-            const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-            window.history.replaceState({}, '', newUrl);
-        }
-    });
 </script>
 </body>
 </html>
