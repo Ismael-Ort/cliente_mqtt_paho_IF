@@ -197,8 +197,32 @@ function cargarDashboard() {
         .catch(() => {
             document.getElementById("alertas-container").innerHTML = "<p>Error cargando alertas.</p>";
             document.getElementById("alertas-pagination").innerHTML = "";
+
         });
 }
+
+let stompClient = null;
+
+function connectWs() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/status', msg => {
+            renderEstaciones(JSON.parse(msg.body));
+        });
+        stompClient.subscribe('/topic/alertas', msg => {
+            renderAlertas(JSON.parse(msg.body));
+
+
+        });
+    });
+}
+
+
+window.onload = () => {
+    cargarDashboard();
+    connectWs();
+};
 
 function connectWs() {
     const socket = new SockJS('/ws');
@@ -220,6 +244,7 @@ window.onload = () => {
     cargarDashboard();
     connectWs();
 }
+
 </script>
 </body>
 </html>
