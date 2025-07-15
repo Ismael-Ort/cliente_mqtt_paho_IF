@@ -203,18 +203,33 @@ function cargarDashboard() {
 function connectWs() {
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
+
+    // Añadimos heart-beating para mantener la conexión activa en segundo plano.
+    // El cliente enviará un "ping" cada 10 segundos para evitar que la conexión
+    // sea cerrada por inactividad por proxies o por el propio navegador.
+    stompClient.heartbeat.outgoing = 10000;
+    stompClient.heartbeat.incoming = 0; // No esperamos heartbeats del servidor
+
     stompClient.connect({}, () => {
         stompClient.subscribe('/topic/status', msg => {
             const estaciones = JSON.parse(msg.body);
             renderEstaciones(estaciones);
         });
-
         stompClient.subscribe('/topic/alertas', msg => {
             const alertas = JSON.parse(msg.body);
             renderAlertas(alertas);
         });
     });
 }
+
+// Usamos la API de Visibilidad de Página para recargar los datos cuando la pestaña vuelve a estar activa.
+// Esto asegura que el usuario siempre vea los datos más frescos al regresar a la página.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('La pestaña es visible de nuevo. Actualizando datos...');
+        cargarDashboard();
+    }
+});
 
 window.onload = () => {
     cargarDashboard();
