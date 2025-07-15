@@ -17,6 +17,16 @@
             color: #334155;
         }
 
+        .alert-form-container .form-description {
+            margin-bottom: 1.5rem;
+            color: #475569; /* slate-600 */
+            font-size: 0.9rem;
+            background-color: #eef2ff; /* indigo-100 */
+            padding: 1rem;
+            border-left: 4px solid #6366f1; /* indigo-500 */
+            border-radius: 4px;
+        }
+
         .alert-form {
             display: flex;
             flex-wrap: wrap;
@@ -144,25 +154,33 @@
     <div id="alertas-pagination" class="pagination"></div>
 
     <div class="alert-form-container">
-        <h3>➕ Crear Nueva Alerta</h3>
-        <form id="alert-form" class="alert-form">
+        <h3>⚙️ Definir Regla de Alerta Automática</h3>
+        <p class="form-description">Crea una regla que generará una alerta automáticamente cuando el valor de un sensor cruce el umbral definido.</p>
+        <form id="rule-form" class="alert-form">
             <div class="form-group">
-                <label for="alert-station-select">Estación</label>
-                <select id="alert-station-select" required><option value="">Seleccionar...</option></select>
+                <label for="rule-station-select">Estación</label>
+                <select id="rule-station-select" required><option value="">Seleccionar...</option></select>
             </div>
             <div class="form-group">
-                <label for="alert-sensor-select">Sensor</label>
-                <select id="alert-sensor-select" disabled required><option value="">Seleccionar...</option></select>
+                <label for="rule-sensor-select">Sensor</label>
+                <select id="rule-sensor-select" disabled required><option value="">Seleccionar...</option></select>
             </div>
             <div class="form-group">
-                <label for="alert-valor">Umbral</label>
-                <input type="number" step="any" id="alert-valor" placeholder="Ej: 25.5" required />
+                <label for="rule-condition">Condición</label>
+                <select id="rule-condition" required>
+                    <option value="MAYOR_QUE">Valor es Mayor que</option>
+                    <option value="MENOR_QUE">Valor es Menor que</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="rule-valor">Umbral</label>
+                <input type="number" step="any" id="rule-valor" placeholder="Ej: 25.5" required />
             </div>
             <div class="form-group form-group-full">
-                <label for="alert-mensaje">Mensaje</label>
-                <input type="text" id="alert-mensaje" placeholder="Ej: Temperatura demasiado alta" required />
+                <label for="rule-mensaje">Mensaje de la Alerta</label>
+                <input type="text" id="rule-mensaje" placeholder="Ej: Temperatura demasiado alta en el invernadero" required />
             </div>
-            <div class="form-group"><button type="submit" id="crear-alerta-btn">Crear Alerta</button></div>
+            <div class="form-group"><button type="submit" id="crear-regla-btn">Crear Regla</button></div>
         </form>
     </div>
 
@@ -303,7 +321,7 @@ function cargarEstacionesForm() {
     fetch('/api/stations')
         .then(res => res.json())
         .then(estaciones => {
-            const sel = document.getElementById('alert-station-select');
+            const sel = document.getElementById('rule-station-select');
             sel.innerHTML = '<option value="">Seleccionar...</option>';
             estaciones.forEach(e => {
                 const opt = document.createElement('option');
@@ -314,15 +332,15 @@ function cargarEstacionesForm() {
         })
         .catch(error => {
             console.error('Error al cargar estaciones para el formulario:', error);
-            const sel = document.getElementById('alert-station-select');
+            const sel = document.getElementById('rule-station-select');
             sel.innerHTML = '<option value="">Error al cargar</option>';
             sel.disabled = true;
         });
 }
 
-document.getElementById('alert-station-select').addEventListener('change', e => {
+document.getElementById('rule-station-select').addEventListener('change', e => {
     const id = e.target.value;
-    const sensorSel = document.getElementById('alert-sensor-select');
+    const sensorSel = document.getElementById('rule-sensor-select');
     if (!id) {
         sensorSel.disabled = true;
         sensorSel.innerHTML = '<option value="">Seleccionar...</option>';
@@ -342,50 +360,46 @@ document.getElementById('alert-station-select').addEventListener('change', e => 
         });
 });
 
-document.getElementById('alert-form').addEventListener('submit', e => {
+document.getElementById('rule-form').addEventListener('submit', e => {
     e.preventDefault();
 
-    const valorInput = document.getElementById('alert-valor');
+    const valorInput = document.getElementById('rule-valor');
     const valor = valorInput.value.trim();
 
     // Validación del campo Umbral
     if (valor === '' || isNaN(parseFloat(valor))) {
         alert('Por favor, ingrese un valor numérico válido para el Umbral.');
         valorInput.focus();
-        return; // Detiene el envío si la validación falla
+        return;
     }
 
-    const submitBtn = document.getElementById('crear-alerta-btn');
+    const submitBtn = document.getElementById('crear-regla-btn');
     const originalBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Creando...';
+    submitBtn.textContent = 'Creando Regla...';
 
-    const stationId = document.getElementById('alert-station-select').value;
-    const sensorId = document.getElementById('alert-sensor-select').value;
-    const mensaje = document.getElementById('alert-mensaje').value;
+    const stationId = document.getElementById('rule-station-select').value;
+    const sensorId = document.getElementById('rule-sensor-select').value;
+    const condicion = document.getElementById('rule-condition').value;
+    const mensaje = document.getElementById('rule-mensaje').value;
 
-    fetch('/api/alertas/manual', {
+    fetch('/api/alertas/reglas', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `stationId=${stationId}&sensorId=${sensorId}&umbral=${valor}&mensaje=${encodeURIComponent(mensaje)}` // Usamos la variable 'valor' validada
+        body: `stationId=${stationId}&sensorId=${sensorId}&condicion=${condicion}&umbral=${valor}&mensaje=${encodeURIComponent(mensaje)}`
     })
     .then(response => {
         if (response.ok) {
-            document.getElementById('alert-mensaje').value = '';
-            valorInput.value = ''; // Limpiamos el campo usando la referencia
-            cargarAlertas(); // Actualizamos la tabla de alertas automáticamente
-            // Opcionalmente, podrías resetear los selects también si lo deseas
-            // document.getElementById('alert-station-select').value = "";
-            // const sensorSelect = document.getElementById('alert-sensor-select');
-            // sensorSelect.innerHTML = '<option value="">Seleccionar...</option>';
-            // sensorSelect.disabled = true;
+            alert('¡Regla de alerta creada exitosamente! La alerta se activará cuando se cumpla la condición.');
+            document.getElementById('rule-mensaje').value = '';
+            valorInput.value = '';
         } else {
-            alert('Hubo un error al crear la alerta. Por favor, inténtelo de nuevo.');
+            alert('Hubo un error al crear la regla. Por favor, inténtelo de nuevo.');
         }
     })
     .catch(error => {
-        console.error('Error al enviar el formulario:', error);
-        alert('Error de red. No se pudo crear la alerta.');
+        console.error('Error al enviar el formulario de regla:', error);
+        alert('Error de red. No se pudo crear la regla.');
     })
     .finally(() => {
         submitBtn.disabled = false;
