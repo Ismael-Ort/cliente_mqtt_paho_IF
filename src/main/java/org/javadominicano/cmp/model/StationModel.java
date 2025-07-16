@@ -5,6 +5,9 @@ import java.util.List;
 public class StationModel {
     private int stationId;
     private String stationModel;
+    private String ubicacion;
+    private Double latitud;
+    private Double longitud;
     private List<SensorModel> sensores;
 
     public List<SensorModel> getSensores() {
@@ -22,4 +25,13 @@ public class StationModel {
 
     public String getStationModel() { return stationModel; }
     public void setStationModel(String stationModel) { this.stationModel = stationModel; }
+
+    public String getUbicacion() { return ubicacion; }
+    public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
+
+    public Double getLatitud() { return latitud; }
+    public void setLatitud(Double latitud) { this.latitud = latitud; }
+
+    public Double getLongitud() { return longitud; }
+    public void setLongitud(Double longitud) { this.longitud = longitud; }
 }

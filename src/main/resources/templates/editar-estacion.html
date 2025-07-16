@@ -27,6 +27,15 @@
         <label for="nombre">Nuevo Nombre:</label>
         <input type="text" id="nombre" th:field="*{stationModel}" required />
 
+        <label>Ubicación:</label>
+        <input type="text" th:field="*{ubicacion}" />
+
+        <label>Latitud:</label>
+        <input type="text" th:field="*{latitud}" />
+
+        <label>Longitud:</label>
+        <input type="text" th:field="*{longitud}" />
+
         <button type="submit">💾 Guardar Cambios</button>
         <a href="/dashboard/administrar-estaciones" class="cancelar">Cancelar</a>
     </form>

@@ -51,6 +51,9 @@ public class DatabaseManager {
                 StationModel s = new StationModel();
                 s.setStationId(rs.getInt("station_id"));
                 s.setStationModel(rs.getString("station_model"));
+                s.setUbicacion(rs.getString("ubicacion"));
+                s.setLatitud(rs.getObject("latitud") != null ? rs.getDouble("latitud") : null);
+                s.setLongitud(rs.getObject("longitud") != null ? rs.getDouble("longitud") : null);
                 list.add(s);
             }
         } catch (SQLException e) {
@@ -293,35 +296,49 @@ public List<RecordModel> getLatestRecordsByStation() {
     }
     return list;
 }
-        public StationModel getStationById(int stationId) {
-    String query = "SELECT * FROM Station WHERE station_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(query)) {
-        stmt.setInt(1, stationId);
-        ResultSet rs = stmt.executeQuery();
-        if (rs.next()) {
-            StationModel s = new StationModel();
-            s.setStationId(rs.getInt("station_id"));
-            s.setStationModel(rs.getString("station_model"));
-            return s;
+    public StationModel getStationById(int stationId) {
+        String query = "SELECT * FROM Station WHERE station_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, stationId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                StationModel s = new StationModel();
+                s.setStationId(rs.getInt("station_id"));
+                s.setStationModel(rs.getString("station_model"));
+                s.setUbicacion(rs.getString("ubicacion"));
+                s.setLatitud(rs.getObject("latitud") != null ? rs.getDouble("latitud") : null);
+                s.setLongitud(rs.getObject("longitud") != null ? rs.getDouble("longitud") : null);
+                return s;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-    } catch (SQLException e) {
-        e.printStackTrace();
+        return null;
     }
-    return null;
-}
 
-public void updateStation(StationModel station) {
-    String update = "UPDATE Station SET station_model = ? WHERE station_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(update)) {
-        stmt.setString(1, station.getStationModel());
-        stmt.setInt(2, station.getStationId());
-        stmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
+    public void updateStation(StationModel station) {
+        String update = "UPDATE Station SET station_model = ?, ubicacion = ?, latitud = ?, longitud = ? WHERE station_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(update)) {
+            stmt.setString(1, station.getStationModel());
+            stmt.setString(2, station.getUbicacion());
+            if (station.getLatitud() != null) {
+                stmt.setDouble(3, station.getLatitud());
+            } else {
+                stmt.setNull(3, Types.DOUBLE);
+            }
+            if (station.getLongitud() != null) {
+                stmt.setDouble(4, station.getLongitud());
+            } else {
+                stmt.setNull(4, Types.DOUBLE);
+            }
+            stmt.setInt(5, station.getStationId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
-}
 
 public void deleteStation(int stationId) {
     try (Connection conn = getConnection()) {

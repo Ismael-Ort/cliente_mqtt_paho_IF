@@ -8,6 +8,9 @@ import org.javadominicano.cmp.dto.AlertRuleDTO;
 
 import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
+import org.javadominicano.cmp.dto.ReporteResumenDTO;
+
+
 import org.javadominicano.cmp.model.RecordModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.StationModel;
@@ -587,7 +590,6 @@ public class EstacionController {
         dbManager.insertAlertRule(stationId, sensorId, mensaje, umbral);
     }
 
-
     @PostMapping("/api/alertas/rules")
     @ResponseBody
     public void crearRegla(@RequestParam int stationId,
@@ -602,7 +604,6 @@ public class EstacionController {
     public List<AlertRuleDTO> listarReglas() {
         return dbManager.getAlertRuleDTOs();
     }
-
 
     @GetMapping("/dashboard/alertas")
     public String verAlertas(Model model) {
