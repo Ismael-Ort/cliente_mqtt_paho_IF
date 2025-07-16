@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Alertas | WeatherNet</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="sidebar">
+    <h2>WeatherNet</h2>
+    <ul>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a href="/dashboard/administrar-estaciones">Estaciones</a></li>
+        <li><a href="/dashboard/reportes">Reportes</a></li>
+        <li><a href="/dashboard/graficos">Gráficos</a></li>
+        <li><a href="/dashboard/alertas" class="active">Alertas</a></li>
+    </ul>
+    <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
+    <ul>
+        <li>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" style="background: none; border: none; color: #f87171; font-weight: bold; cursor: pointer;">⏻ Cerrar sesión</button>
+            </form>
+        </li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <h1>Gestión de Alertas</h1>
+
+    <div class="alert-form">
+        <h3>Crear Alerta</h3>
+        <form id="alertForm">
+            <label for="estacionSelect">Estación</label>
+            <select id="estacionSelect" required>
+                <option value="">Seleccione</option>
+            </select>
+            <label for="sensorSelect">Sensor</label>
+            <select id="sensorSelect" required disabled>
+                <option value="">Seleccione una estación</option>
+            </select>
+            <label for="tipoSelect">Tipo de alerta</label>
+            <select id="tipoSelect">
+                <option value="ALTA">Alta</option>
+                <option value="BAJA">Baja</option>
+            </select>
+            <label for="umbralInput">Umbral</label>
+            <input type="number" step="0.1" id="umbralInput" required>
+            <button type="submit">Guardar Alerta</button>
+        </form>
+    </div>
+
+    <div class="alertas-content">
+        <h3>Alertas Existentes</h3>
+        <div class="filters" style="margin-bottom:1rem; display:flex; gap:1rem; flex-wrap:wrap;">
+            <select id="filtroEstacion">
+                <option value="">Todas las estaciones</option>
+            </select>
+            <select id="filtroTipo">
+                <option value="">Todos los tipos</option>
+                <option value="ALTA">Alta</option>
+                <option value="BAJA">Baja</option>
+            </select>
+        </div>
+        <table class="alert-table" id="alertTable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Estación</th>
+                <th>Sensor</th>
+                <th>Tipo</th>
+                <th>Umbral</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="pagination" id="alertPagination"></div>
+    </div>
+</div>
+
+<script>
+const estaciones = [];
+let alertas = [];
+let currentPage = 1;
+const rowsPerPage = 5;
+
+function cargarEstaciones() {
+    fetch('/api/stations')
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(e => {
+                estaciones.push(e);
+                const opt = document.createElement('option');
+                opt.value = e.stationId;
+                opt.textContent = e.stationModel;
+                document.getElementById('estacionSelect').appendChild(opt.cloneNode(true));
+                document.getElementById('filtroEstacion').appendChild(opt);
+            });
+        });
+}
+
+function cargarSensores(estacionId) {
+    const sensorSelect = document.getElementById('sensorSelect');
+    sensorSelect.innerHTML = '<option value="">Seleccione un sensor</option>';
+    sensorSelect.disabled = true;
+    if(!estacionId) return;
+    fetch(`/api/stations/${estacionId}/sensors`)
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.sensorId;
+                opt.textContent = `${s.sensorModel} (${s.sensorType})`;
+                sensorSelect.appendChild(opt);
+            });
+            sensorSelect.disabled = false;
+        });
+}
+
+function cargarAlertas() {
+    fetch('/api/alertas')
+        .then(r => r.json())
+        .then(data => {
+            alertas = data.map((a, idx) => ({
+                id: idx + 1,
+                estacion: a.nombreEstacion,
+                sensor: a.sensorNombre,
+                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baja') ? 'BAJA' : 'ALTA',
+                umbral: a.valor,
+                fecha: new Date(a.fecha).toLocaleString(),
+                estado: 'Activo'
+            }));
+            aplicarFiltros();
+        });
+}
+
+function renderTabla(datos) {
+    const tbody = document.querySelector('#alertTable tbody');
+    tbody.innerHTML = '';
+    const start = (currentPage-1)*rowsPerPage;
+    const pageData = datos.slice(start, start+rowsPerPage);
+    pageData.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.tipo}</td><td>${a.umbral}</td><td>${a.fecha}</td><td>${a.estado}</td>`;
+        tbody.appendChild(tr);
+    });
+    renderPaginacion(datos.length);
+}
+
+function renderPaginacion(total) {
+    const pag = document.getElementById('alertPagination');
+    pag.innerHTML = '';
+    const pages = Math.ceil(total/rowsPerPage);
+    for(let i=1;i<=pages;i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.disabled = i===currentPage;
+        btn.addEventListener('click',()=>{currentPage=i;aplicarFiltros();});
+        pag.appendChild(btn);
+    }
+}
+
+function aplicarFiltros() {
+    let datos = alertas.slice();
+    const est = document.getElementById('filtroEstacion').value;
+    const tipo = document.getElementById('filtroTipo').value;
+    if(est) datos = datos.filter(a => a.estacion === estaciones.find(e => e.stationId==est).stationModel);
+    if(tipo) datos = datos.filter(a => a.tipo === tipo);
+    renderTabla(datos);
+}
+
+document.getElementById('estacionSelect').addEventListener('change', e => cargarSensores(e.target.value));
+document.getElementById('filtroEstacion').addEventListener('change', ()=>{currentPage=1;aplicarFiltros();});
+document.getElementById('filtroTipo').addEventListener('change', ()=>{currentPage=1;aplicarFiltros();});
+
+document.getElementById('alertForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const payload = new URLSearchParams();
+    payload.append('stationId', document.getElementById('estacionSelect').value);
+    payload.append('sensorId', document.getElementById('sensorSelect').value);
+    payload.append('umbral', document.getElementById('umbralInput').value);
+    payload.append('mensaje', document.getElementById('tipoSelect').value);
+    fetch('/api/alertas/manual', {
+        method:'POST',
+        body: payload
+    }).then(()=>{
+        e.target.reset();
+        document.getElementById('sensorSelect').disabled=true;
+        cargarAlertas();
+    });
+});
+
+cargarEstaciones();
+cargarAlertas();
+</script>
+</body>
+</html>
