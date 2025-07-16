@@ -72,6 +72,9 @@
         <button class="btn btn-danger btn-sm btn-descarga" data-formato="pdf">PDF</button>
         <button class="btn btn-success btn-sm btn-descarga" data-formato="xlsx">Excel</button>
         <button class="btn btn-secondary btn-sm btn-descarga" data-formato="csv">CSV</button>
+        <button class="btn btn-info btn-sm btn-resumen" data-formato="pdf">Resumen Máx/Mín PDF</button>
+        <button class="btn btn-info btn-sm btn-resumen" data-formato="xlsx">Resumen Máx/Mín Excel</button>
+        <button class="btn btn-info btn-sm btn-resumen" data-formato="csv">Resumen Máx/Mín CSV</button>
     </div>
 
     <!-- Tabla de Registros -->
@@ -146,30 +149,36 @@
         // 2. Añadir un evento 'click' a cada botón
         botonesDescarga.forEach(boton => {
             boton.addEventListener('click', function() {
-                // 3. Obtener el formato (pdf, xlsx, csv) del atributo 'data-formato'
                 const formato = this.getAttribute('data-formato');
-
-                // 4. Obtener los valores actuales de los filtros
                 const stationId = document.getElementById('stationId').value;
                 const fechaDesde = document.getElementById('fechaDesde').value;
                 const fechaHasta = document.getElementById('fechaHasta').value;
 
-                // 5. Construir la URL de descarga con los parámetros
                 const params = new URLSearchParams();
                 params.append('formato', formato);
+                if (stationId) params.append('stationId', stationId);
+                if (fechaDesde) params.append('fechaDesde', fechaDesde);
+                if (fechaHasta) params.append('fechaHasta', fechaHasta);
 
-                if (stationId) {
-                    params.append('stationId', stationId);
-                }
-                if (fechaDesde) {
-                    params.append('fechaDesde', fechaDesde);
-                }
-                if (fechaHasta) {
-                    params.append('fechaHasta', fechaHasta);
-                }
-
-                // 6. Redirigir a la URL para iniciar la descarga
                 window.location.href = `/api/reportes/descargar?${params.toString()}`;
+            });
+        });
+
+        const botonesResumen = document.querySelectorAll('.btn-resumen');
+        botonesResumen.forEach(boton => {
+            boton.addEventListener('click', function() {
+                const formato = this.getAttribute('data-formato');
+                const stationId = document.getElementById('stationId').value;
+                const fechaDesde = document.getElementById('fechaDesde').value;
+                const fechaHasta = document.getElementById('fechaHasta').value;
+
+                const params = new URLSearchParams();
+                params.append('formato', formato);
+                if (stationId) params.append('stationId', stationId);
+                if (fechaDesde) params.append('fechaDesde', fechaDesde);
+                if (fechaHasta) params.append('fechaHasta', fechaHasta);
+
+                window.location.href = `/api/reportes/resumen?${params.toString()}`;
             });
         });
     });

@@ -8,6 +8,12 @@ import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
 
+import org.javadominicano.cmp.dto.ReporteResumenDTO;
+
+import java.util.Map;
+import java.util.LinkedHashMap;
+
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -445,8 +451,8 @@ public List<AlertaDTO> getAlertasActivas() {
     return alertas;
 }
 
-public List<ReporteRecordDTO> getReporteRecords(Integer stationId, Date desde, Date hasta) {
-    List<ReporteRecordDTO> list = new ArrayList<>();
+    public List<ReporteRecordDTO> getReporteRecords(Integer stationId, Date desde, Date hasta) {
+        List<ReporteRecordDTO> list = new ArrayList<>();
 
     StringBuilder query = new StringBuilder("""
         SELECT
@@ -624,6 +630,87 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         }
         return list;
     }
+
+    public List<ReporteResumenDTO> getResumenMaxMin(Integer stationId, Date desde, Date hasta) {
+        Map<Integer, ReporteResumenDTO> resumenMap = new LinkedHashMap<>();
+
+        StringBuilder query = new StringBuilder("""
+            SELECT
+                st.station_model AS nombreEstacion,
+                s.sensor_model AS sensorNombre,
+                s.sensor_type AS tipoSensor,
+                r.value AS valor,
+                r.record_datetime AS fecha,
+                s.sensor_id AS sensorId
+            FROM Record r
+            JOIN Sensor s ON r.sensor_id = s.sensor_id
+            JOIN Station st ON s.station_id = st.station_id
+            WHERE 1=1
+        """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (stationId != null) {
+            query.append(" AND st.station_id = ?");
+            params.add(stationId);
+        }
+
+        if (desde != null) {
+            query.append(" AND r.record_datetime >= ?");
+            params.add(new java.sql.Timestamp(desde.getTime()));
+        }
+
+        if (hasta != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(hasta);
+            cal.set(Calendar.HOUR_OF_DAY, 23);
+            cal.set(Calendar.MINUTE, 59);
+            cal.set(Calendar.SECOND, 59);
+            query.append(" AND r.record_datetime <= ?");
+            params.add(new java.sql.Timestamp(cal.getTimeInMillis()));
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
+
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int sId = rs.getInt("sensorId");
+                double valor = rs.getDouble("valor");
+                Date fecha = rs.getTimestamp("fecha");
+                ReporteResumenDTO dto = resumenMap.get(sId);
+                if (dto == null) {
+                    dto = new ReporteResumenDTO();
+                    dto.setNombreEstacion(rs.getString("nombreEstacion"));
+                    dto.setSensorNombre(rs.getString("sensorNombre"));
+                    dto.setTipoSensor(rs.getString("tipoSensor"));
+                    dto.setValorMax(valor);
+                    dto.setFechaMax(fecha);
+                    dto.setValorMin(valor);
+                    dto.setFechaMin(fecha);
+                    resumenMap.put(sId, dto);
+                } else {
+                    if (valor > dto.getValorMax()) {
+                        dto.setValorMax(valor);
+                        dto.setFechaMax(fecha);
+                    }
+                    if (valor < dto.getValorMin()) {
+                        dto.setValorMin(valor);
+                        dto.setFechaMin(fecha);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return new ArrayList<>(resumenMap.values());
+    }
+
 
     public List<AlertRuleModel> getAllAlertRules() {
         List<AlertRuleModel> reglas = new ArrayList<>();
