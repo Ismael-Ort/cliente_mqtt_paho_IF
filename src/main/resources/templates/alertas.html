@@ -81,11 +81,16 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
 <script>
 const estaciones = [];
 let alertas = [];
 let currentPage = 1;
 const rowsPerPage = 5;
+let stompClient;
+
 
 function cargarEstaciones() {
     fetch('/api/stations')
@@ -136,6 +141,28 @@ function cargarAlertas() {
             aplicarFiltros();
         });
 }
+
+
+function conectarWS() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/alertas', msg => {
+            const a = JSON.parse(msg.body);
+            alertas.unshift({
+                id: alertas.length + 1,
+                estacion: a.nombreEstacion,
+                sensor: a.sensorNombre,
+                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baja') ? 'BAJA' : 'ALTA',
+                umbral: a.valor,
+                fecha: new Date(a.fecha).toLocaleString(),
+                estado: 'Activo'
+            });
+            aplicarFiltros();
+        });
+    });
+}
+
 
 function renderTabla(datos) {
     const tbody = document.querySelector('#alertTable tbody');
@@ -195,6 +222,9 @@ document.getElementById('alertForm').addEventListener('submit', e => {
 
 cargarEstaciones();
 cargarAlertas();
+
+conectarWS();
+
 </script>
 </body>
 </html>

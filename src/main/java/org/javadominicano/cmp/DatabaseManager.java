@@ -13,7 +13,6 @@ import org.javadominicano.cmp.dto.ReporteResumenDTO;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Calendar;
