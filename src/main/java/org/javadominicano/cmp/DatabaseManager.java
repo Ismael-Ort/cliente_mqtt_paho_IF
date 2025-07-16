@@ -3,8 +3,14 @@ package org.javadominicano.cmp;
 import org.javadominicano.cmp.model.StationModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.RecordModel;
+import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.dto.AlertRuleDTO;
+import org.javadominicano.cmp.dto.ReporteResumenDTO;
+
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -26,6 +32,7 @@ public class DatabaseManager {
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
         this.dbPass = dbPass;
+        createAlertRuleTable();
     }
 
     private Connection getConnection() throws SQLException {
@@ -42,6 +49,9 @@ public class DatabaseManager {
                 StationModel s = new StationModel();
                 s.setStationId(rs.getInt("station_id"));
                 s.setStationModel(rs.getString("station_model"));
+                s.setUbicacion(rs.getString("ubicacion"));
+                s.setLatitud(rs.getObject("latitud") != null ? rs.getDouble("latitud") : null);
+                s.setLongitud(rs.getObject("longitud") != null ? rs.getDouble("longitud") : null);
                 list.add(s);
             }
         } catch (SQLException e) {
@@ -284,35 +294,49 @@ public List<RecordModel> getLatestRecordsByStation() {
     }
     return list;
 }
-        public StationModel getStationById(int stationId) {
-    String query = "SELECT * FROM Station WHERE station_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(query)) {
-        stmt.setInt(1, stationId);
-        ResultSet rs = stmt.executeQuery();
-        if (rs.next()) {
-            StationModel s = new StationModel();
-            s.setStationId(rs.getInt("station_id"));
-            s.setStationModel(rs.getString("station_model"));
-            return s;
+    public StationModel getStationById(int stationId) {
+        String query = "SELECT * FROM Station WHERE station_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, stationId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                StationModel s = new StationModel();
+                s.setStationId(rs.getInt("station_id"));
+                s.setStationModel(rs.getString("station_model"));
+                s.setUbicacion(rs.getString("ubicacion"));
+                s.setLatitud(rs.getObject("latitud") != null ? rs.getDouble("latitud") : null);
+                s.setLongitud(rs.getObject("longitud") != null ? rs.getDouble("longitud") : null);
+                return s;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-    } catch (SQLException e) {
-        e.printStackTrace();
+        return null;
     }
-    return null;
-}
 
-public void updateStation(StationModel station) {
-    String update = "UPDATE Station SET station_model = ? WHERE station_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(update)) {
-        stmt.setString(1, station.getStationModel());
-        stmt.setInt(2, station.getStationId());
-        stmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
+    public void updateStation(StationModel station) {
+        String update = "UPDATE Station SET station_model = ?, ubicacion = ?, latitud = ?, longitud = ? WHERE station_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(update)) {
+            stmt.setString(1, station.getStationModel());
+            stmt.setString(2, station.getUbicacion());
+            if (station.getLatitud() != null) {
+                stmt.setDouble(3, station.getLatitud());
+            } else {
+                stmt.setNull(3, Types.DOUBLE);
+            }
+            if (station.getLongitud() != null) {
+                stmt.setDouble(4, station.getLongitud());
+            } else {
+                stmt.setNull(4, Types.DOUBLE);
+            }
+            stmt.setInt(5, station.getStationId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
-}
 
 public void deleteStation(int stationId) {
     try (Connection conn = getConnection()) {
@@ -442,8 +466,8 @@ public List<AlertaDTO> getAlertasActivas() {
     return alertas;
 }
 
-public List<ReporteRecordDTO> getReporteRecords(Integer stationId, Date desde, Date hasta) {
-    List<ReporteRecordDTO> list = new ArrayList<>();
+    public List<ReporteRecordDTO> getReporteRecords(Integer stationId, Date desde, Date hasta) {
+        List<ReporteRecordDTO> list = new ArrayList<>();
 
     StringBuilder query = new StringBuilder("""
         SELECT
@@ -525,16 +549,220 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
     }
 }
 
-public void toggleSensorActivo(int sensorId) {
-    String sql = "UPDATE Sensor SET activo = NOT activo WHERE sensor_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(sql)) {
-        stmt.setInt(1, sensorId);
-        stmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
+    public void toggleSensorActivo(int sensorId) {
+        String sql = "UPDATE Sensor SET activo = NOT activo WHERE sensor_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, sensorId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
-}
+
+    // ==== Alert Rule management ====
+
+    public void insertAlertRule(int stationId, int sensorId, String tipo, double umbral) {
+        String sql = "INSERT INTO AlertRule (station_id, sensor_id, tipo, umbral, activa) VALUES (?, ?, ?, ?, 0)";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, stationId);
+            stmt.setInt(2, sensorId);
+            stmt.setString(3, tipo);
+            stmt.setDouble(4, umbral);
+            stmt.executeUpdate();
+            System.out.printf("📝 Regla de alerta creada: %s %.2f (%d-%d)\n", tipo, umbral, stationId, sensorId);
+        } catch (SQLException e) {
+            System.out.println("❌ Error insertando regla de alerta:");
+            e.printStackTrace();
+        }
+    }
+
+    public List<AlertRuleModel> getAlertRulesBySensor(int stationId, int sensorId) {
+        List<AlertRuleModel> reglas = new ArrayList<>();
+        String sql = "SELECT * FROM AlertRule WHERE station_id = ? AND sensor_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, stationId);
+            stmt.setInt(2, sensorId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    AlertRuleModel r = new AlertRuleModel();
+                    r.setRuleId(rs.getInt("rule_id"));
+                    r.setStationId(rs.getInt("station_id"));
+                    r.setSensorId(rs.getInt("sensor_id"));
+                    r.setTipo(rs.getString("tipo"));
+                    r.setUmbral(rs.getDouble("umbral"));
+                    r.setActiva(rs.getBoolean("activa"));
+                    reglas.add(r);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return reglas;
+    }
+
+    public void updateAlertRuleState(int ruleId, boolean activa) {
+        String sql = "UPDATE AlertRule SET activa = ? WHERE rule_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBoolean(1, activa);
+            stmt.setInt(2, ruleId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<AlertRuleDTO> getAlertRuleDTOs() {
+        List<AlertRuleDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT ar.*, st.station_model, se.sensor_model
+            FROM AlertRule ar
+            JOIN Station st ON ar.station_id = st.station_id
+            JOIN Sensor se ON ar.sensor_id = se.sensor_id
+            ORDER BY ar.rule_id DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                AlertRuleDTO dto = new AlertRuleDTO();
+                dto.setRuleId(rs.getInt("rule_id"));
+                dto.setStationId(rs.getInt("station_id"));
+                dto.setSensorId(rs.getInt("sensor_id"));
+                dto.setTipo(rs.getString("tipo"));
+                dto.setUmbral(rs.getDouble("umbral"));
+                dto.setActiva(rs.getBoolean("activa"));
+                dto.setNombreEstacion(rs.getString("station_model"));
+                dto.setSensorNombre(rs.getString("sensor_model"));
+                list.add(dto);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<ReporteResumenDTO> getResumenMaxMin(Integer stationId, Date desde, Date hasta) {
+        Map<Integer, ReporteResumenDTO> resumenMap = new LinkedHashMap<>();
+
+        StringBuilder query = new StringBuilder("""
+            SELECT
+                st.station_model AS nombreEstacion,
+                s.sensor_model AS sensorNombre,
+                s.sensor_type AS tipoSensor,
+                r.value AS valor,
+                r.record_datetime AS fecha,
+                s.sensor_id AS sensorId
+            FROM Record r
+            JOIN Sensor s ON r.sensor_id = s.sensor_id
+            JOIN Station st ON s.station_id = st.station_id
+            WHERE 1=1
+        """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (stationId != null) {
+            query.append(" AND st.station_id = ?");
+            params.add(stationId);
+        }
+
+        if (desde != null) {
+            query.append(" AND r.record_datetime >= ?");
+            params.add(new java.sql.Timestamp(desde.getTime()));
+        }
+
+        if (hasta != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(hasta);
+            cal.set(Calendar.HOUR_OF_DAY, 23);
+            cal.set(Calendar.MINUTE, 59);
+            cal.set(Calendar.SECOND, 59);
+            query.append(" AND r.record_datetime <= ?");
+            params.add(new java.sql.Timestamp(cal.getTimeInMillis()));
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
+
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int sId = rs.getInt("sensorId");
+                double valor = rs.getDouble("valor");
+                Date fecha = rs.getTimestamp("fecha");
+                ReporteResumenDTO dto = resumenMap.get(sId);
+                if (dto == null) {
+                    dto = new ReporteResumenDTO();
+                    dto.setNombreEstacion(rs.getString("nombreEstacion"));
+                    dto.setSensorNombre(rs.getString("sensorNombre"));
+                    dto.setTipoSensor(rs.getString("tipoSensor"));
+                    dto.setValorMax(valor);
+                    dto.setFechaMax(fecha);
+                    dto.setValorMin(valor);
+                    dto.setFechaMin(fecha);
+                    resumenMap.put(sId, dto);
+                } else {
+                    if (valor > dto.getValorMax()) {
+                        dto.setValorMax(valor);
+                        dto.setFechaMax(fecha);
+                    }
+                    if (valor < dto.getValorMin()) {
+                        dto.setValorMin(valor);
+                        dto.setFechaMin(fecha);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return new ArrayList<>(resumenMap.values());
+    }
+
+    public List<AlertRuleModel> getAllAlertRules() {
+        List<AlertRuleModel> reglas = new ArrayList<>();
+        String sql = "SELECT * FROM AlertRule";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                AlertRuleModel r = new AlertRuleModel();
+                r.setRuleId(rs.getInt("rule_id"));
+                r.setStationId(rs.getInt("station_id"));
+                r.setSensorId(rs.getInt("sensor_id"));
+                r.setTipo(rs.getString("tipo"));
+                r.setUmbral(rs.getDouble("umbral"));
+                r.setActiva(rs.getBoolean("activa"));
+                reglas.add(r);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return reglas;
+    }
+
+    private void createAlertRuleTable() {
+        String sql = "CREATE TABLE IF NOT EXISTS AlertRule (" +
+                "rule_id INT AUTO_INCREMENT PRIMARY KEY," +
+                "station_id INT NOT NULL," +
+                "sensor_id INT NOT NULL," +
+                "tipo VARCHAR(10) NOT NULL," +
+                "umbral DOUBLE NOT NULL," +
+                "activa BOOLEAN NOT NULL DEFAULT 0," +
+                "fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                ")";
+        try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 

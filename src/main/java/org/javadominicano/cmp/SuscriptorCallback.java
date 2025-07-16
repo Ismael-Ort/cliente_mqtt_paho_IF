@@ -2,18 +2,29 @@ package org.javadominicano.cmp;
 
 import com.google.gson.Gson;
 import org.eclipse.paho.client.mqttv3.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.dto.StationStatusDTO;
+import org.javadominicano.cmp.model.RecordModel;
+import org.javadominicano.cmp.model.SensorModel;
+import org.javadominicano.cmp.model.StationModel;
 
 import java.util.Date;
+import java.util.Map;
+import java.util.HashMap;
 
 public class SuscriptorCallback implements MqttCallback {
 
     private final DatabaseManager dbSimulado;
     private final DatabaseManager dbFisico;
+    private final SimpMessagingTemplate messagingTemplate;
     private final Gson gson = new Gson();
 
-    public SuscriptorCallback(DatabaseManager dbSimulado, DatabaseManager dbFisico) {
+    public SuscriptorCallback(DatabaseManager dbSimulado, DatabaseManager dbFisico,
+                              SimpMessagingTemplate messagingTemplate) {
         this.dbSimulado = dbSimulado;
         this.dbFisico = dbFisico;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
@@ -97,37 +108,83 @@ public class SuscriptorCallback implements MqttCallback {
             System.out.printf("✅ Registro físico insertado: estación=%s, sensor=%s, valor=%.2f\n",
                     stationModel, sensorModel, valor);
 
-            // 🔔 Evaluar alertas
-            String mensajeAlerta = null;
-            switch (sensorType.toLowerCase()) {
-                case "temperatura":
-                    if (valor > 40) mensajeAlerta = "Temperatura excesiva";
-                    break;
-                case "humedad":
-                    if (valor > 90) mensajeAlerta = "Humedad alta";
-                    break;
-                case "presion":
-                    if (valor < 950 || valor > 1050) mensajeAlerta = "Presión fuera de rango";
-                    break;
-                case "viento":
-                    if (valor > 25) mensajeAlerta = "Viento peligroso";
-                    break;
-                case "precipitacion":
-                    if (valor > 50) mensajeAlerta = "Precipitación intensa";
-                    break;
-                case "humedad_suelo":
-                    if (valor > 80) mensajeAlerta = "Humedad del suelo elevada";
-                    break;
+            // 📡 Enviar actualización de estación por WebSocket
+            StationStatusDTO dto = buildStationStatus(stationId);
+            if (dto != null) {
+                messagingTemplate.convertAndSend("/topic/estaciones", dto);
             }
 
-            if (mensajeAlerta != null) {
-                dbFisico.insertAlert(stationId, sensorId, valor, mensajeAlerta);
-            }
+            // 🔔 Evaluar reglas de alerta configuradas
+            dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
+                boolean cumple;
+                if ("ALTA".equalsIgnoreCase(regla.getTipo())) {
+                    cumple = valor >= regla.getUmbral();
+                } else {
+                    cumple = valor <= regla.getUmbral();
+                }
+
+                if (cumple && !regla.isActiva()) {
+                    String msg = "ALTA".equalsIgnoreCase(regla.getTipo())
+                            ? "Umbral alto superado" : "Umbral bajo alcanzado";
+                    dbFisico.insertAlert(stationId, sensorId, valor, msg);
+                    AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
+                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), true);
+                } else if (!cumple && regla.isActiva()) {
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                }
+            });
 
         } catch (Exception e) {
             System.out.println("❌ Error al procesar mensaje físico:");
             e.printStackTrace();
         }
+    }
+
+    private StationStatusDTO buildStationStatus(int stationId) {
+        StationModel station = dbFisico.getStationById(stationId);
+        if (station == null) return null;
+        StationStatusDTO dto = new StationStatusDTO();
+        dto.setStationName(station.getStationModel());
+
+        Map<String, Double> data = new HashMap<>();
+        Date last = null;
+        for (SensorModel s : dbFisico.getSensorsByStation(stationId)) {
+            RecordModel r = dbFisico.getLastRecord(s.getSensorId());
+            if (r != null) {
+                String tipo = s.getSensorType().toLowerCase().trim().replace("ó", "o");
+                double val = Math.round(r.getValue() * 10.0) / 10.0;
+                switch (tipo) {
+                    case "temperatura" -> data.put("temperatura", val);
+                    case "humedad" -> data.put("humedad", val);
+                    case "presion" -> data.put("presion", val);
+                    case "viento" -> data.put("viento", val);
+                    case "precipitacion" -> data.put("precipitacion", val);
+                    case "humedad_suelo" -> data.put("humedad_suelo", val);
+                }
+                if (last == null || r.getRecordDatetime().after(last)) {
+                    last = r.getRecordDatetime();
+                }
+            }
+        }
+        dto.setData(data);
+        dto.setLastUpdate(last);
+        dto.setStatus((last != null && new Date().getTime() - last.getTime() < 3 * 60 * 1000)
+                ? "EN_LINEA" : "DESCONECTADA");
+        return dto;
+    }
+
+    private AlertaDTO buildAlertaDTO(int stationId, String sensorModel, String sensorType,
+                                     double valor, String mensaje) {
+        AlertaDTO alerta = new AlertaDTO();
+        alerta.setFecha(new Date());
+        StationModel est = dbFisico.getStationById(stationId);
+        alerta.setNombreEstacion(est != null ? est.getStationModel() : String.valueOf(stationId));
+        alerta.setSensorNombre(sensorModel);
+        alerta.setTipoSensor(sensorType);
+        alerta.setValor(valor);
+        alerta.setMensaje(mensaje);
+        return alerta;
     }
 
     @Override
