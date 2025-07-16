@@ -145,32 +145,44 @@ public class SuscriptorCallback implements MqttCallback {
 
             // 🔔 Evaluar reglas de alerta configuradas
             dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
-                boolean cumple;
-                if ("ALTA".equalsIgnoreCase(regla.getTipo())) {
-                    cumple = valor >= regla.getUmbral();
-                } else {
-                    cumple = valor <= regla.getUmbral();
-                }
+                try {
+                    String tipo = regla.getTipo().toUpperCase();
+                    boolean cumple;
 
-                if (cumple && !regla.isActiva()) {
-                    String msg = "ALTA".equalsIgnoreCase(regla.getTipo())
-                            ? "Umbral alto superado" : "Umbral bajo alcanzado";
-                    dbFisico.insertAlert(stationId, sensorId, valor, msg);
+                    // Validación del tipo de alerta
+                    if (!"ALTA".equals(tipo) && !"BAJA".equals(tipo)) {
+                        System.out.printf("⚠️ Tipo de regla desconocido: %s (Regla ID=%d)\n", tipo, regla.getRuleId());
+                        return; // Ignorar reglas mal configuradas
+                    }
 
-                    AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
-                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
+                    // Evaluar condición de activación
+                    if ("ALTA".equals(tipo)) {
+                        cumple = valor >= regla.getUmbral();
+                    } else { // BAJA
+                        cumple = valor <= regla.getUmbral();
+                    }
 
-                    dbFisico.updateAlertRuleState(regla.getRuleId(), true);
-                } else if (!cumple && regla.isActiva()) {
-                    dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                    if (cumple && !regla.isActiva()) {
+                        // Mensaje adecuado según tipo
+                        String msg = "ALTA".equals(tipo)
+                                ? "Umbral alto superado"
+                                : "Umbral bajo alcanzado";
+
+                        dbFisico.insertAlert(stationId, sensorId, valor, msg);
+                        dbFisico.updateAlertRuleState(regla.getRuleId(), true);
+                        System.out.printf("🚨 Alerta activada: %s | Valor: %.2f | Regla ID: %d\n", msg, valor, regla.getRuleId());
+                    } else if (!cumple && regla.isActiva()) {
+                        // Resetear alerta si ya no se cumple
+                        dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                        System.out.printf("✅ Alerta desactivada (regla ID %d)\n", regla.getRuleId());
+                    }
+
+                } catch (Exception e) {
+                    System.out.println("❌ Error al evaluar regla de alerta:");
+                    e.printStackTrace();
                 }
             });
 
-        } catch (Exception e) {
-            System.out.println("❌ Error al procesar mensaje físico:");
-            e.printStackTrace();
-        }
-    }
 
     private StationStatusDTO buildStationStatus(int stationId) {
         StationModel station = dbFisico.getStationById(stationId);
