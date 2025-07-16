@@ -135,6 +135,37 @@ public class SuscriptorCallback implements MqttCallback {
                 }
             });
 
+
+            // 📡 Enviar actualización de estación por WebSocket
+            StationStatusDTO dto = buildStationStatus(stationId);
+            if (dto != null) {
+                messagingTemplate.convertAndSend("/topic/estaciones", dto);
+            }
+
+
+            // 🔔 Evaluar reglas de alerta configuradas
+            dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
+                boolean cumple;
+                if ("ALTA".equalsIgnoreCase(regla.getTipo())) {
+                    cumple = valor >= regla.getUmbral();
+                } else {
+                    cumple = valor <= regla.getUmbral();
+                }
+
+                if (cumple && !regla.isActiva()) {
+                    String msg = "ALTA".equalsIgnoreCase(regla.getTipo())
+                            ? "Umbral alto superado" : "Umbral bajo alcanzado";
+                    dbFisico.insertAlert(stationId, sensorId, valor, msg);
+
+                    AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
+                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
+
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), true);
+                } else if (!cumple && regla.isActiva()) {
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                }
+            });
+
         } catch (Exception e) {
             System.out.println("❌ Error al procesar mensaje físico:");
             e.printStackTrace();

@@ -83,12 +83,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
 <script>
 const estaciones = [];
 let alertas = [];
 let currentPage = 1;
 const rowsPerPage = 5;
 let stompClient;
+
 
 function cargarEstaciones() {
     fetch('/api/stations')
@@ -139,6 +141,7 @@ function cargarAlertas() {
             aplicarFiltros();
         });
 }
+
 
 function conectarWS() {
     const socket = new SockJS('/ws');
@@ -218,7 +221,12 @@ document.getElementById('alertForm').addEventListener('submit', e => {
 
 cargarEstaciones();
 cargarAlertas();
+
 conectarWS();
+
+
+conectarWS();
+
 </script>
 </body>
 </html>
