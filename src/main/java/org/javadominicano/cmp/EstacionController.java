@@ -4,6 +4,8 @@ import org.javadominicano.cmp.dto.StationStatusDTO;
 import org.javadominicano.cmp.dto.StationDetailsDTO;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.dto.AlertRuleDTO;
+import org.javadominicano.cmp.dto.ReporteResumenDTO;
 import org.javadominicano.cmp.model.RecordModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.StationModel;
@@ -451,6 +453,116 @@ public class EstacionController {
         }
     }
 
+    // ==== Resumen Max/Min ====
+
+    @GetMapping("/api/reportes/resumen")
+    public void descargarResumen(
+            @RequestParam(required = false) Integer stationId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaHasta,
+            @RequestParam(defaultValue = "csv") String formato,
+            HttpServletResponse response) throws IOException {
+
+        List<ReporteResumenDTO> resumen = dbManager.getResumenMaxMin(stationId, fechaDesde, fechaHasta);
+
+        switch (formato.toLowerCase()) {
+            case "pdf":
+                generarResumenPdf(resumen, response);
+                break;
+            case "xlsx":
+                generarResumenXlsx(resumen, response);
+                break;
+            default:
+                generarResumenCsv(resumen, response);
+                break;
+        }
+    }
+
+    private void generarResumenCsv(List<ReporteResumenDTO> data, HttpServletResponse response) throws IOException {
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=resumen.csv");
+
+        try (PrintWriter writer = response.getWriter()) {
+            writer.println("Estacion,Sensor,Tipo,Valor Max,Fecha Max,Valor Min,Fecha Min");
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            for (ReporteResumenDTO r : data) {
+                writer.printf("\"%s\",\"%s\",\"%s\",%.2f,\"%s\",%.2f,\"%s\"%n",
+                        r.getNombreEstacion(),
+                        r.getSensorNombre(),
+                        r.getTipoSensor(),
+                        r.getValorMax(),
+                        sdf.format(r.getFechaMax()),
+                        r.getValorMin(),
+                        sdf.format(r.getFechaMin()));
+            }
+        }
+    }
+
+    private void generarResumenXlsx(List<ReporteResumenDTO> data, HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=resumen.xlsx");
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Resumen");
+
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"Estacion", "Sensor", "Tipo", "Valor Max", "Fecha Max", "Valor Min", "Fecha Min"};
+            for (int i = 0; i < headers.length; i++) {
+                headerRow.createCell(i).setCellValue(headers[i]);
+            }
+
+            int rowNum = 1;
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            for (ReporteResumenDTO r : data) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(r.getNombreEstacion());
+                row.createCell(1).setCellValue(r.getSensorNombre());
+                row.createCell(2).setCellValue(r.getTipoSensor());
+                row.createCell(3).setCellValue(r.getValorMax());
+                row.createCell(4).setCellValue(sdf.format(r.getFechaMax()));
+                row.createCell(5).setCellValue(r.getValorMin());
+                row.createCell(6).setCellValue(sdf.format(r.getFechaMin()));
+            }
+
+            workbook.write(response.getOutputStream());
+        }
+    }
+
+    private void generarResumenPdf(List<ReporteResumenDTO> data, HttpServletResponse response) throws IOException {
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=resumen.pdf");
+
+        try (Document document = new Document(PageSize.A4.rotate())) {
+            PdfWriter.getInstance(document, response.getOutputStream());
+            document.open();
+
+            document.add(new Paragraph("Resumen Máx/Mín de Registros"));
+            document.add(new Paragraph(" "));
+
+            PdfPTable table = new PdfPTable(7);
+            table.setWidthPercentage(100);
+            String[] headers = {"Estacion", "Sensor", "Tipo", "Valor Max", "Fecha Max", "Valor Min", "Fecha Min"};
+            for (String h : headers) {
+                table.addCell(h);
+            }
+
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            for (ReporteResumenDTO r : data) {
+                table.addCell(r.getNombreEstacion());
+                table.addCell(r.getSensorNombre());
+                table.addCell(r.getTipoSensor());
+                table.addCell(String.format("%.2f", r.getValorMax()));
+                table.addCell(sdf.format(r.getFechaMax()));
+                table.addCell(String.format("%.2f", r.getValorMin()));
+                table.addCell(sdf.format(r.getFechaMin()));
+            }
+
+            document.add(table);
+        } catch (DocumentException e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
     @GetMapping("/api/alertas")
     @ResponseBody
     public List<AlertaDTO> obtenerAlertas() {
@@ -465,8 +577,34 @@ public class EstacionController {
     }
     @PostMapping("/api/alertas/manual")
     @ResponseBody
-    public void crearAlertaManual(@RequestParam int stationId, @RequestParam int sensorId, @RequestParam double umbral, @RequestParam String mensaje) {
-        dbManager.insertAlert(stationId, sensorId, umbral, mensaje);
+    public void crearAlertaManual(@RequestParam int stationId,
+                                  @RequestParam int sensorId,
+                                  @RequestParam double umbral,
+                                  @RequestParam String mensaje) {
+        // "mensaje" contiene el tipo: ALTA o BAJA
+        dbManager.insertAlertRule(stationId, sensorId, mensaje, umbral);
+    }
+
+    @PostMapping("/api/alertas/rules")
+    @ResponseBody
+    public void crearRegla(@RequestParam int stationId,
+                           @RequestParam int sensorId,
+                           @RequestParam double umbral,
+                           @RequestParam String tipo) {
+        dbManager.insertAlertRule(stationId, sensorId, tipo, umbral);
+    }
+
+    @GetMapping("/api/alertas/rules")
+    @ResponseBody
+    public List<AlertRuleDTO> listarReglas() {
+        return dbManager.getAlertRuleDTOs();
+    }
+
+    @GetMapping("/dashboard/alertas")
+    public String verAlertas(Model model) {
+        List<StationModel> estaciones = dbManager.getStations();
+        model.addAttribute("estaciones", estaciones);
+        return "alertas";
     }
 
 
