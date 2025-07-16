@@ -465,8 +465,19 @@ public class EstacionController {
     }
     @PostMapping("/api/alertas/manual")
     @ResponseBody
-    public void crearAlertaManual(@RequestParam int stationId, @RequestParam int sensorId, @RequestParam double umbral, @RequestParam String mensaje) {
-        dbManager.insertAlert(stationId, sensorId, umbral, mensaje);
+    public void crearAlertaManual(@RequestParam int stationId,
+                                  @RequestParam int sensorId,
+                                  @RequestParam double umbral,
+                                  @RequestParam String mensaje) {
+        // "mensaje" contiene el tipo: ALTA o BAJA
+        dbManager.insertAlertRule(stationId, sensorId, mensaje, umbral);
+    }
+
+    @GetMapping("/dashboard/alertas")
+    public String verAlertas(Model model) {
+        List<StationModel> estaciones = dbManager.getStations();
+        model.addAttribute("estaciones", estaciones);
+        return "alertas";
     }
 
 
