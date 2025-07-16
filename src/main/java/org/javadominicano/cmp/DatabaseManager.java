@@ -7,10 +7,12 @@ import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
+
 import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
 import java.util.Map;
 import java.util.LinkedHashMap;
+
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -613,6 +615,7 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
     }
 
     public List<AlertRuleDTO> getAlertRuleDTOs() {
@@ -725,6 +728,7 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         return new ArrayList<>(resumenMap.values());
     }
 
+
     public List<AlertRuleModel> getAllAlertRules() {
         List<AlertRuleModel> reglas = new ArrayList<>();
         String sql = "SELECT * FROM AlertRule";
@@ -762,6 +766,7 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
     }
 
 

@@ -1,3 +1,5 @@
+package org.javadominicano.cmp.dto;
+
 public class AlertRuleDTO {
     private int ruleId;
     private int stationId;
