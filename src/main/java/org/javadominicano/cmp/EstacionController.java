@@ -469,6 +469,13 @@ public class EstacionController {
         dbManager.insertAlert(stationId, sensorId, umbral, mensaje);
     }
 
+    @GetMapping("/dashboard/alertas")
+    public String verAlertas(Model model) {
+        List<StationModel> estaciones = dbManager.getStations();
+        model.addAttribute("estaciones", estaciones);
+        return "alertas";
+    }
+
 
     @GetMapping("/dashboard/graficos")
     public String verGraficos(Model model) {

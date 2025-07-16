@@ -384,14 +384,48 @@ h1, h2, h3 {
     background-color: #f3f6fd;
 }
 
-
 /* ===== Alert Section ===== */
 .alert-form {
     margin-top: 1rem;
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    max-width: 500px;
+}
+
+.alert-form label {
+    font-weight: bold;
+    color: #334155;
+    display: block;
+    margin-top: 0.5rem;
 }
 
 .alert-form select,
 .alert-form input {
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 0.25rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.alert-form button {
+    margin-top: 1rem;
+    padding: 10px 20px;
+    background-color: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.alert-form button:hover {
+    background-color: #2563eb;
+}
 
 /* ===== Sidebar Alert Section ===== */
 .sidebar .alertas-content {
@@ -406,7 +440,6 @@ h1, h2, h3 {
 
 .sidebar-alert-form select,
 .sidebar-alert-form input {
-
     width: 100%;
     padding: 6px;
     margin-bottom: 0.5rem;
@@ -414,11 +447,7 @@ h1, h2, h3 {
     border-radius: 4px;
 }
 
-.alert-form button {
-
-
 .sidebar-alert-form button {
-
     width: 100%;
     padding: 8px;
     background-color: #3b82f6;
@@ -429,10 +458,6 @@ h1, h2, h3 {
     cursor: pointer;
 }
 
-.alert-form button:hover {
-
-
 .sidebar-alert-form button:hover {
-
     background-color: #2563eb;
 }
