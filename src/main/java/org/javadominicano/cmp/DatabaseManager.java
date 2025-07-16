@@ -3,8 +3,10 @@ package org.javadominicano.cmp;
 import org.javadominicano.cmp.model.StationModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.RecordModel;
+import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.dto.AlertRuleDTO;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ public class DatabaseManager {
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
         this.dbPass = dbPass;
+        createAlertRuleTable();
     }
 
     private Connection getConnection() throws SQLException {
@@ -525,16 +528,140 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
     }
 }
 
-public void toggleSensorActivo(int sensorId) {
-    String sql = "UPDATE Sensor SET activo = NOT activo WHERE sensor_id = ?";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(sql)) {
-        stmt.setInt(1, sensorId);
-        stmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
+    public void toggleSensorActivo(int sensorId) {
+        String sql = "UPDATE Sensor SET activo = NOT activo WHERE sensor_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, sensorId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
-}
+
+    // ==== Alert Rule management ====
+
+    public void insertAlertRule(int stationId, int sensorId, String tipo, double umbral) {
+        String sql = "INSERT INTO AlertRule (station_id, sensor_id, tipo, umbral, activa) VALUES (?, ?, ?, ?, 0)";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, stationId);
+            stmt.setInt(2, sensorId);
+            stmt.setString(3, tipo);
+            stmt.setDouble(4, umbral);
+            stmt.executeUpdate();
+            System.out.printf("📝 Regla de alerta creada: %s %.2f (%d-%d)\n", tipo, umbral, stationId, sensorId);
+        } catch (SQLException e) {
+            System.out.println("❌ Error insertando regla de alerta:");
+            e.printStackTrace();
+        }
+    }
+
+    public List<AlertRuleModel> getAlertRulesBySensor(int stationId, int sensorId) {
+        List<AlertRuleModel> reglas = new ArrayList<>();
+        String sql = "SELECT * FROM AlertRule WHERE station_id = ? AND sensor_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, stationId);
+            stmt.setInt(2, sensorId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    AlertRuleModel r = new AlertRuleModel();
+                    r.setRuleId(rs.getInt("rule_id"));
+                    r.setStationId(rs.getInt("station_id"));
+                    r.setSensorId(rs.getInt("sensor_id"));
+                    r.setTipo(rs.getString("tipo"));
+                    r.setUmbral(rs.getDouble("umbral"));
+                    r.setActiva(rs.getBoolean("activa"));
+                    reglas.add(r);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return reglas;
+    }
+
+    public void updateAlertRuleState(int ruleId, boolean activa) {
+        String sql = "UPDATE AlertRule SET activa = ? WHERE rule_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBoolean(1, activa);
+            stmt.setInt(2, ruleId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<AlertRuleDTO> getAlertRuleDTOs() {
+        List<AlertRuleDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT ar.*, st.station_model, se.sensor_model
+            FROM AlertRule ar
+            JOIN Station st ON ar.station_id = st.station_id
+            JOIN Sensor se ON ar.sensor_id = se.sensor_id
+            ORDER BY ar.rule_id DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                AlertRuleDTO dto = new AlertRuleDTO();
+                dto.setRuleId(rs.getInt("rule_id"));
+                dto.setStationId(rs.getInt("station_id"));
+                dto.setSensorId(rs.getInt("sensor_id"));
+                dto.setTipo(rs.getString("tipo"));
+                dto.setUmbral(rs.getDouble("umbral"));
+                dto.setActiva(rs.getBoolean("activa"));
+                dto.setNombreEstacion(rs.getString("station_model"));
+                dto.setSensorNombre(rs.getString("sensor_model"));
+                list.add(dto);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<AlertRuleModel> getAllAlertRules() {
+        List<AlertRuleModel> reglas = new ArrayList<>();
+        String sql = "SELECT * FROM AlertRule";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                AlertRuleModel r = new AlertRuleModel();
+                r.setRuleId(rs.getInt("rule_id"));
+                r.setStationId(rs.getInt("station_id"));
+                r.setSensorId(rs.getInt("sensor_id"));
+                r.setTipo(rs.getString("tipo"));
+                r.setUmbral(rs.getDouble("umbral"));
+                r.setActiva(rs.getBoolean("activa"));
+                reglas.add(r);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return reglas;
+    }
+
+    private void createAlertRuleTable() {
+        String sql = "CREATE TABLE IF NOT EXISTS AlertRule (" +
+                "rule_id INT AUTO_INCREMENT PRIMARY KEY," +
+                "station_id INT NOT NULL," +
+                "sensor_id INT NOT NULL," +
+                "tipo VARCHAR(10) NOT NULL," +
+                "umbral DOUBLE NOT NULL," +
+                "activa BOOLEAN NOT NULL DEFAULT 0," +
+                "fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                ")";
+        try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 
