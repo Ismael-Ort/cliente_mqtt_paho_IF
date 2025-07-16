@@ -592,6 +592,7 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
     }
 
     public List<AlertRuleDTO> getAlertRuleDTOs() {
@@ -661,6 +662,8 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+
     }
 
 
