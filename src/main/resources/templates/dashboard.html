@@ -27,7 +27,7 @@
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
 
     <ul>
-        <li><a href="#alertas-section">Alertas</a></li>
+        <li><a href="/dashboard/alertas">Alertas</a></li>
     </ul>
 
     <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;">
@@ -45,7 +45,7 @@
     <h1>Dashboard</h1>
 
     <!-- 🧾 Resumen de estado general -->
-    <div id="resumen-general" class="cards-container"></div>
+    <div id="resumen-general" class="indicator-container"></div>
 
     <!-- 🌐 Estaciones por tarjeta -->
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
@@ -60,7 +60,13 @@
 </div>
 
 <!-- 🔄 Script para cargar datos -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script>
+let estacionesData = {};
+let alertCount = 0;
+let stompClient;
+
 function cargarDashboard() {
     // Cargar resumen general
     fetch("/api/stations/summary")
@@ -68,12 +74,25 @@ function cargarDashboard() {
         .then(data => {
             const container = document.getElementById("resumen-general");
             const html = `
-                <div class="card">Total Estaciones: ${data.total}</div>
-                <div class="card">En Línea: ${data.enLinea}</div>
-                <div class="card">Desconectadas: ${data.desconectadas}</div>
-                <div class="card alerta">Alarmas Activas: ${data.alertasActivas}</div>
+                <div class="indicator-card indicator-total">
+                    <h3>🛰️ Total Estaciones</h3>
+                    <div class="number">${data.total}</div>
+                </div>
+                <div class="indicator-card indicator-online">
+                    <h3>✅ En Línea</h3>
+                    <div class="number">${data.enLinea}</div>
+                </div>
+                <div class="indicator-card indicator-offline">
+                    <h3>🔌 Desconectadas</h3>
+                    <div class="number">${data.desconectadas}</div>
+                </div>
+                <div class="indicator-card indicator-alerts">
+                    <h3>⚠️ Alarmas Activas</h3>
+                    <div class="number">${data.alertasActivas}</div>
+                </div>
             `;
             container.innerHTML = html;
+            alertCount = data.alertasActivas;
         })
         .catch(error => {
             document.getElementById("resumen-general").innerHTML = "<p>Error cargando datos</p>";
@@ -86,10 +105,12 @@ function cargarDashboard() {
         .then(estaciones => {
             const container = document.getElementById("summary");
             container.innerHTML = "";
+            estacionesData = {};
 
             estaciones.forEach(est => {
                 const card = document.createElement("div");
                 card.classList.add("station-card");
+                card.id = `station-${est.stationName}`;
                 if (est.status === "DESCONECTADA") {
                     card.classList.add("offline");
                 }
@@ -112,7 +133,9 @@ function cargarDashboard() {
                     </ul>
                 `;
                 container.appendChild(card);
+                estacionesData[est.stationName] = est;
             });
+            actualizarResumenGeneral();
         })
         .catch(err => {
             document.getElementById("summary").innerHTML = "<p>Error cargando estaciones.</p>";
@@ -120,8 +143,75 @@ function cargarDashboard() {
         });
 }
 
+function actualizarResumenGeneral() {
+    const total = Object.keys(estacionesData).length;
+    let enLinea = 0;
+    Object.values(estacionesData).forEach(e => { if (e.status === 'EN_LINEA') enLinea++; });
+    const desconectadas = total - enLinea;
+    const container = document.getElementById("resumen-general");
+    container.innerHTML = `
+        <div class="indicator-card indicator-total">
+            <h3>🛰️ Total Estaciones</h3>
+            <div class="number">${total}</div>
+        </div>
+        <div class="indicator-card indicator-online">
+            <h3>✅ En Línea</h3>
+            <div class="number">${enLinea}</div>
+        </div>
+        <div class="indicator-card indicator-offline">
+            <h3>🔌 Desconectadas</h3>
+            <div class="number">${desconectadas}</div>
+        </div>
+        <div class="indicator-card indicator-alerts">
+            <h3>⚠️ Alarmas Activas</h3>
+            <div class="number">${alertCount}</div>
+        </div>`;
+}
+
+function actualizarUIEstacion(dto) {
+    estacionesData[dto.stationName] = dto;
+    let card = document.getElementById(`station-${dto.stationName}`);
+    if (!card) {
+        card = document.createElement('div');
+        card.classList.add('station-card');
+        card.id = `station-${dto.stationName}`;
+        document.getElementById('summary').appendChild(card);
+    }
+    card.classList.toggle('offline', dto.status === 'DESCONECTADA');
+    const ultimaLectura = dto.lastUpdate ? new Date(dto.lastUpdate).toLocaleString() : 'No disponible';
+    card.innerHTML = `
+        <h3>${dto.stationName}</h3>
+        <p><strong>Estado:</strong> ${dto.status}</p>
+        <p><strong>Última lectura:</strong><br> ${ultimaLectura}</p>
+        <ul>
+            <li>🌡️ Temperatura: ${dto.data?.temperatura ?? 'N/D'} °C</li>
+            <li>💧 Humedad: ${dto.data?.humedad ?? 'N/D'} %</li>
+            <li>⬇️ Presión: ${dto.data?.presion ?? 'N/D'} hPa</li>
+            <li>💨 Viento: ${dto.data?.viento ?? 'N/D'} m/s</li>
+            <li>🌧️ Precipitación: ${dto.data?.precipitacion ?? 'N/D'} mm</li>
+            <li>🌱 Humedad Suelo: ${dto.data?.humedad_suelo ?? 'N/D'} %</li>
+        </ul>`;
+    actualizarResumenGeneral();
+}
+
+function conectarWS() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/estaciones', msg => {
+            const data = JSON.parse(msg.body);
+            actualizarUIEstacion(data);
+        });
+        stompClient.subscribe('/topic/alertas', msg => {
+            alertCount++;
+            actualizarResumenGeneral();
+            console.log('Alerta recibida', JSON.parse(msg.body));
+        });
+    });
+}
+
 // 🔃 Ejecutar al cargar la página
-window.onload = cargarDashboard;
+window.onload = () => { cargarDashboard(); conectarWS(); };
 </script>
 
 </body>

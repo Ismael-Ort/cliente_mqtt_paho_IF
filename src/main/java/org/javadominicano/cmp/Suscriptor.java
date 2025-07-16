@@ -3,11 +3,16 @@ package org.javadominicano.cmp;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Component;
 
+@Component
 public class Suscriptor {
 
     public static final String BROKER_URL = "tcp://mqtt.eict.ce.pucmm.edu.do:1883";
     private MqttClient client;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // Base de datos simulada 
     public static final DatabaseManager dbSimulado = new DatabaseManager();
@@ -19,7 +24,9 @@ public class Suscriptor {
         "Mqtt1234!"                           
     );
 
-    public Suscriptor() {
+    @Autowired
+    public Suscriptor(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
         String clientId = "suscriptor-1";
         try {
             client = new MqttClient(BROKER_URL, clientId);
@@ -32,7 +39,7 @@ public class Suscriptor {
     public void start() {
         try {
             // Callback que decide a cuál DB guardar, según el topic
-            client.setCallback(new SuscriptorCallback(dbSimulado, dbFisico));
+            client.setCallback(new SuscriptorCallback(dbSimulado, dbFisico, messagingTemplate));
 
             MqttConnectOptions connectOptions = new MqttConnectOptions();
             connectOptions.setAutomaticReconnect(true);
