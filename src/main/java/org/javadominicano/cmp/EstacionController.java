@@ -4,6 +4,7 @@ import org.javadominicano.cmp.dto.StationStatusDTO;
 import org.javadominicano.cmp.dto.StationDetailsDTO;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.dto.AlertRuleDTO;
 import org.javadominicano.cmp.model.RecordModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.StationModel;
@@ -472,6 +473,23 @@ public class EstacionController {
         // "mensaje" contiene el tipo: ALTA o BAJA
         dbManager.insertAlertRule(stationId, sensorId, mensaje, umbral);
     }
+
+
+    @PostMapping("/api/alertas/rules")
+    @ResponseBody
+    public void crearRegla(@RequestParam int stationId,
+                           @RequestParam int sensorId,
+                           @RequestParam double umbral,
+                           @RequestParam String tipo) {
+        dbManager.insertAlertRule(stationId, sensorId, tipo, umbral);
+    }
+
+    @GetMapping("/api/alertas/rules")
+    @ResponseBody
+    public List<AlertRuleDTO> listarReglas() {
+        return dbManager.getAlertRuleDTOs();
+    }
+
 
     @GetMapping("/dashboard/alertas")
     public String verAlertas(Model model) {
