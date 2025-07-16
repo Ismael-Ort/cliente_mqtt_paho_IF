@@ -94,6 +94,55 @@ h1, h2, h3 {
 }
 
 /* ====================
+   📊 Dashboard Indicators
+==================== */
+.indicator-container {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.indicator-card {
+    flex: 1;
+    min-width: 160px;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.indicator-card h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+}
+
+.indicator-card .number {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.indicator-total {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.indicator-online {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.indicator-offline {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.indicator-alerts {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+/* ====================
    💳 Cards de resumen
 ==================== */
 .card-grid {

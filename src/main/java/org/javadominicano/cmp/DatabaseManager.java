@@ -663,7 +663,6 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
             e.printStackTrace();
         }
 
-
     }
 
 

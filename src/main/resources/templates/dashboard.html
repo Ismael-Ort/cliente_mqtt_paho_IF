@@ -45,7 +45,7 @@
     <h1>Dashboard</h1>
 
     <!-- 🧾 Resumen de estado general -->
-    <div id="resumen-general" class="cards-container"></div>
+    <div id="resumen-general" class="indicator-container"></div>
 
     <!-- 🌐 Estaciones por tarjeta -->
     <h2 style="margin-top: 2rem;">Estaciones Meteorológicas</h2>
@@ -68,10 +68,22 @@ function cargarDashboard() {
         .then(data => {
             const container = document.getElementById("resumen-general");
             const html = `
-                <div class="card">Total Estaciones: ${data.total}</div>
-                <div class="card">En Línea: ${data.enLinea}</div>
-                <div class="card">Desconectadas: ${data.desconectadas}</div>
-                <div class="card alerta">Alarmas Activas: ${data.alertasActivas}</div>
+                <div class="indicator-card indicator-total">
+                    <h3>🛰️ Total Estaciones</h3>
+                    <div class="number">${data.total}</div>
+                </div>
+                <div class="indicator-card indicator-online">
+                    <h3>✅ En Línea</h3>
+                    <div class="number">${data.enLinea}</div>
+                </div>
+                <div class="indicator-card indicator-offline">
+                    <h3>🔌 Desconectadas</h3>
+                    <div class="number">${data.desconectadas}</div>
+                </div>
+                <div class="indicator-card indicator-alerts">
+                    <h3>⚠️ Alarmas Activas</h3>
+                    <div class="number">${data.alertasActivas}</div>
+                </div>
             `;
             container.innerHTML = html;
         })
