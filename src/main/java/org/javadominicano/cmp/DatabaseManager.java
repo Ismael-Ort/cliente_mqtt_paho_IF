@@ -7,7 +7,6 @@ import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
-
 import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
 import java.util.Map;

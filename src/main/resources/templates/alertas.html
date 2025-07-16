@@ -163,7 +163,6 @@ function conectarWS() {
     });
 }
 
-
 function renderTabla(datos) {
     const tbody = document.querySelector('#alertTable tbody');
     tbody.innerHTML = '';
@@ -222,6 +221,9 @@ document.getElementById('alertForm').addEventListener('submit', e => {
 
 cargarEstaciones();
 cargarAlertas();
+
+conectarWS();
+
 
 conectarWS();
 
