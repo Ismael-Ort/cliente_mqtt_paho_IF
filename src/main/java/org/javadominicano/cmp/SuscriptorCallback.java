@@ -97,32 +97,24 @@ public class SuscriptorCallback implements MqttCallback {
             System.out.printf("✅ Registro físico insertado: estación=%s, sensor=%s, valor=%.2f\n",
                     stationModel, sensorModel, valor);
 
-            // 🔔 Evaluar alertas
-            String mensajeAlerta = null;
-            switch (sensorType.toLowerCase()) {
-                case "temperatura":
-                    if (valor > 40) mensajeAlerta = "Temperatura excesiva";
-                    break;
-                case "humedad":
-                    if (valor > 90) mensajeAlerta = "Humedad alta";
-                    break;
-                case "presion":
-                    if (valor < 950 || valor > 1050) mensajeAlerta = "Presión fuera de rango";
-                    break;
-                case "viento":
-                    if (valor > 25) mensajeAlerta = "Viento peligroso";
-                    break;
-                case "precipitacion":
-                    if (valor > 50) mensajeAlerta = "Precipitación intensa";
-                    break;
-                case "humedad_suelo":
-                    if (valor > 80) mensajeAlerta = "Humedad del suelo elevada";
-                    break;
-            }
+            // 🔔 Evaluar reglas de alerta configuradas
+            dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
+                boolean cumple;
+                if ("ALTA".equalsIgnoreCase(regla.getTipo())) {
+                    cumple = valor >= regla.getUmbral();
+                } else {
+                    cumple = valor <= regla.getUmbral();
+                }
 
-            if (mensajeAlerta != null) {
-                dbFisico.insertAlert(stationId, sensorId, valor, mensajeAlerta);
-            }
+                if (cumple && !regla.isActiva()) {
+                    String msg = "ALTA".equalsIgnoreCase(regla.getTipo())
+                            ? "Umbral alto superado" : "Umbral bajo alcanzado";
+                    dbFisico.insertAlert(stationId, sensorId, valor, msg);
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), true);
+                } else if (!cumple && regla.isActiva()) {
+                    dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                }
+            });
 
         } catch (Exception e) {
             System.out.println("❌ Error al procesar mensaje físico:");
