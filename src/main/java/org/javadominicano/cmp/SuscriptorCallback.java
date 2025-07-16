@@ -40,8 +40,6 @@ public class SuscriptorCallback implements MqttCallback {
         try {
             if (topic.contains("BME280") || topic.contains("HW103")) {
                 procesarMensajeFisico(topic, message);
-            } else {
-                // procesarMensajeSimulado(message); // si deseas añadir lógica simulada
             }
         } catch (Exception e) {
             System.out.println("❌ Error procesando mensaje: " + e.getMessage());
@@ -53,9 +51,7 @@ public class SuscriptorCallback implements MqttCallback {
             double valor = Double.parseDouble(message.toString());
             Date fecha = new Date();
 
-            String sensorType;
-            String unit;
-            String sensorModel;
+            String sensorType, unit, sensorModel;
 
             if (topic.endsWith("/temperatura")) {
                 sensorType = "temperatura";
@@ -86,20 +82,7 @@ public class SuscriptorCallback implements MqttCallback {
                 return;
             }
 
-            /*String[] partes = topic.split("/");
-            if (partes.length < 3) {
-                System.out.println("⚠️ Tópico mal formado: " + topic);
-                return;
-            }
-            String stationModel = partes[2];  
-
-            int stationId = dbFisico.getOrCreateStation(stationModel);
-            int sensorId = dbFisico.getOrCreateSensor(stationId, sensorModel, sensorType, unit);
-
-            dbFisico.insertRecord(sensorId, valor, fecha);*/
-
             String stationModel = "Estacion_Fisica_1";
-            //String stationModel = "Estacion2";
             int stationId = dbFisico.getOrCreateStation(stationModel);
             int sensorId = dbFisico.getOrCreateSensor(stationId, sensorModel, sensorType, unit);
 
@@ -116,65 +99,35 @@ public class SuscriptorCallback implements MqttCallback {
 
             // 🔔 Evaluar reglas de alerta configuradas
             dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
-                boolean cumple;
-                if ("ALTA".equalsIgnoreCase(regla.getTipo())) {
-                    cumple = valor >= regla.getUmbral();
-                } else {
-                    cumple = valor <= regla.getUmbral();
-                }
-
-                if (cumple && !regla.isActiva()) {
-                    String msg = "ALTA".equalsIgnoreCase(regla.getTipo())
-                            ? "Umbral alto superado" : "Umbral bajo alcanzado";
-                    dbFisico.insertAlert(stationId, sensorId, valor, msg);
-                    AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
-                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
-                    dbFisico.updateAlertRuleState(regla.getRuleId(), true);
-                } else if (!cumple && regla.isActiva()) {
-                    dbFisico.updateAlertRuleState(regla.getRuleId(), false);
-                }
-            });
-
-
-            // 📡 Enviar actualización de estación por WebSocket
-            StationStatusDTO dto = buildStationStatus(stationId);
-            if (dto != null) {
-                messagingTemplate.convertAndSend("/topic/estaciones", dto);
-            }
-
-
-            // 🔔 Evaluar reglas de alerta configuradas
-            dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
                 try {
                     String tipo = regla.getTipo().toUpperCase();
                     boolean cumple;
 
-                    // Validación del tipo de alerta
                     if (!"ALTA".equals(tipo) && !"BAJA".equals(tipo)) {
                         System.out.printf("⚠️ Tipo de regla desconocido: %s (Regla ID=%d)\n", tipo, regla.getRuleId());
-                        return; // Ignorar reglas mal configuradas
+                        return;
                     }
 
-                    // Evaluar condición de activación
-                    if ("ALTA".equals(tipo)) {
-                        cumple = valor >= regla.getUmbral();
-                    } else { // BAJA
-                        cumple = valor <= regla.getUmbral();
-                    }
+                    cumple = "ALTA".equals(tipo)
+                            ? valor >= regla.getUmbral()
+                            : valor <= regla.getUmbral();
 
                     if (cumple && !regla.isActiva()) {
-                        // Mensaje adecuado según tipo
                         String msg = "ALTA".equals(tipo)
                                 ? "Umbral alto superado"
                                 : "Umbral bajo alcanzado";
 
                         dbFisico.insertAlert(stationId, sensorId, valor, msg);
                         dbFisico.updateAlertRuleState(regla.getRuleId(), true);
-                        System.out.printf("🚨 Alerta activada: %s | Valor: %.2f | Regla ID: %d\n", msg, valor, regla.getRuleId());
+
+                        AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
+                        messagingTemplate.convertAndSend("/topic/alertas", alerta);
+
+                        System.out.printf("🚨 Alerta activada: %s | Valor: %.2f | Regla ID: %d\n",
+                                msg, valor, regla.getRuleId());
                     } else if (!cumple && regla.isActiva()) {
-                        // Resetear alerta si ya no se cumple
                         dbFisico.updateAlertRuleState(regla.getRuleId(), false);
-                        System.out.printf("✅ Alerta desactivada (regla ID %d)\n", regla.getRuleId());
+                        System.out.printf("✅ Alerta desactivada (Regla ID %d)\n", regla.getRuleId());
                     }
 
                 } catch (Exception e) {
@@ -183,15 +136,22 @@ public class SuscriptorCallback implements MqttCallback {
                 }
             });
 
+        } catch (Exception e) {
+            System.out.println("❌ Error al procesar mensaje físico:");
+            e.printStackTrace();
+        }
+    }
 
     private StationStatusDTO buildStationStatus(int stationId) {
         StationModel station = dbFisico.getStationById(stationId);
         if (station == null) return null;
+
         StationStatusDTO dto = new StationStatusDTO();
         dto.setStationName(station.getStationModel());
 
         Map<String, Double> data = new HashMap<>();
         Date last = null;
+
         for (SensorModel s : dbFisico.getSensorsByStation(stationId)) {
             RecordModel r = dbFisico.getLastRecord(s.getSensorId());
             if (r != null) {
@@ -210,6 +170,7 @@ public class SuscriptorCallback implements MqttCallback {
                 }
             }
         }
+
         dto.setData(data);
         dto.setLastUpdate(last);
         dto.setStatus((last != null && new Date().getTime() - last.getTime() < 3 * 60 * 1000)
@@ -221,12 +182,14 @@ public class SuscriptorCallback implements MqttCallback {
                                      double valor, String mensaje) {
         AlertaDTO alerta = new AlertaDTO();
         alerta.setFecha(new Date());
+
         StationModel est = dbFisico.getStationById(stationId);
         alerta.setNombreEstacion(est != null ? est.getStationModel() : String.valueOf(stationId));
         alerta.setSensorNombre(sensorModel);
         alerta.setTipoSensor(sensorType);
         alerta.setValor(valor);
         alerta.setMensaje(mensaje);
+
         return alerta;
     }
 
