@@ -430,7 +430,8 @@ public List<AlertaDTO> getAlertasActivas() {
     List<AlertaDTO> alertas = new ArrayList<>();
 
     String sql = """
-        SELECT 
+        SELECT
+            wa.alert_id AS id,
             wa.alert_datetime AS fecha,
             s.station_model AS nombreEstacion,
             se.sensor_model AS sensorNombre,
@@ -438,7 +439,7 @@ public List<AlertaDTO> getAlertasActivas() {
             wa.value AS valor,
             wa.message AS mensaje
         FROM WeatherAlert wa
-        JOIN Sensor se ON wa.sensor_id = se.sensor_id
+        LEFT JOIN Sensor se ON wa.sensor_id = se.sensor_id
         JOIN Station s ON wa.station_id = s.station_id
         ORDER BY wa.alert_datetime DESC
         LIMIT 20
@@ -450,6 +451,7 @@ public List<AlertaDTO> getAlertasActivas() {
 
         while (rs.next()) {
             AlertaDTO alerta = new AlertaDTO();
+            alerta.setId(rs.getInt("id"));
             alerta.setFecha(rs.getTimestamp("fecha"));
             alerta.setNombreEstacion(rs.getString("nombreEstacion"));
             alerta.setSensorNombre(rs.getString("sensorNombre"));
@@ -547,6 +549,34 @@ public void insertAlert(int stationId, int sensorId, double value, String messag
         System.out.println("❌ Error insertando alerta:");
         e.printStackTrace();
     }
+}
+
+public void deleteAlerta(int alertaId) {
+    String sql = "DELETE FROM WeatherAlert WHERE alert_id = ?";
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, alertaId);
+        stmt.executeUpdate();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+public boolean hasDisconnectAlert(int stationId) {
+    String sql = "SELECT COUNT(*) FROM WeatherAlert WHERE station_id = ? AND sensor_id = 0 AND message = ?";
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, stationId);
+        stmt.setString(2, "Estación desconectada por inactividad");
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return false;
 }
 
     public void toggleSensorActivo(int sensorId) {

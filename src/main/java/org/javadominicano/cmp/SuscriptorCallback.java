@@ -48,32 +48,43 @@ public class SuscriptorCallback implements MqttCallback {
 
     private void procesarMensajeFisico(String topic, MqttMessage message) {
         try {
-            double valor = Double.parseDouble(message.toString());
+            double valor;
             Date fecha = new Date();
 
             String sensorType, unit, sensorModel;
 
-            if (topic.endsWith("/temperatura")) {
+            if (topic.endsWith("/direccion_viento")) {
+                sensorType = "direccion_viento";
+                unit = "";
+                sensorModel = "Sensor_DirViento";
+                valor = convertirDireccionAFloat(message.toString());
+            } else if (topic.endsWith("/temperatura")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "temperatura";
                 unit = "°C";
                 sensorModel = "Sensor_Temp";
             } else if (topic.endsWith("/humedad")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "humedad";
                 unit = "%";
                 sensorModel = "Sensor_Hum";
             } else if (topic.endsWith("/presion") || topic.endsWith("/presión")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "presion";
                 unit = "hPa";
                 sensorModel = "Sensor_Pres";
             } else if (topic.endsWith("/viento")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "viento";
                 unit = "m/s";
                 sensorModel = "Sensor_Viento";
             } else if (topic.endsWith("/precipitacion") || topic.endsWith("/precipitación")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "precipitacion";
                 unit = "mm";
                 sensorModel = "Sensor_Prec";
             } else if (topic.endsWith("/Humedad_suelo")) {
+                valor = Double.parseDouble(message.toString());
                 sensorType = "humedad_suelo";
                 unit = "%";
                 sensorModel = "Sensor_HumedadSuelo";
@@ -162,6 +173,7 @@ public class SuscriptorCallback implements MqttCallback {
                     case "humedad" -> data.put("humedad", val);
                     case "presion" -> data.put("presion", val);
                     case "viento" -> data.put("viento", val);
+                    case "direccion_viento" -> data.put("direccion_viento", val);
                     case "precipitacion" -> data.put("precipitacion", val);
                     case "humedad_suelo" -> data.put("humedad_suelo", val);
                 }
@@ -191,6 +203,20 @@ public class SuscriptorCallback implements MqttCallback {
         alerta.setMensaje(mensaje);
 
         return alerta;
+    }
+
+    private double convertirDireccionAFloat(String direccion) {
+        return switch (direccion.trim().toUpperCase()) {
+            case "N" -> 0.0;
+            case "NE" -> 45.0;
+            case "E" -> 90.0;
+            case "SE" -> 135.0;
+            case "S" -> 180.0;
+            case "SW", "SO" -> 225.0;
+            case "W", "O" -> 270.0;
+            case "NW", "NO" -> 315.0;
+            default -> -1.0;
+        };
     }
 
     @Override
