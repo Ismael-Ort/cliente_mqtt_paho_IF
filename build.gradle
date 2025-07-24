@@ -28,11 +28,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 
-    // --- AÑADE ESTAS DEPENDENCIAS ---
-    // Para la base de datos con Spring Data JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    // Para simplificar el código con Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     
