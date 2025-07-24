@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class StationMonitor {
@@ -19,6 +21,7 @@ public class StationMonitor {
             "Mqtt1234!"
     );
     private final SimpMessagingTemplate messagingTemplate;
+    private final Set<Integer> offlineStations = new HashSet<>();
 
     @Autowired
     public StationMonitor(SimpMessagingTemplate messagingTemplate) {
@@ -31,22 +34,29 @@ public class StationMonitor {
         Date now = new Date();
         for (StationModel est : estaciones) {
             Date last = db.getLastRecordTimeByStation(est.getStationId());
-            if (last == null || now.getTime() - last.getTime() > 10000) {
-                if (!db.hasDisconnectAlert(est.getStationId())) {
-                    db.insertAlert(est.getStationId(), 0, 0.0,
-                            "Estación desconectada por inactividad");
+            boolean desconectada = (last == null || now.getTime() - last.getTime() > 10000);
 
-                    AlertaDTO alerta = new AlertaDTO();
-                    alerta.setId(0);
-                    alerta.setFecha(new Date());
-                    alerta.setNombreEstacion(est.getStationModel());
-                    alerta.setSensorNombre("N/A");
-                    alerta.setTipoSensor("N/A");
-                    alerta.setValor(0.0);
-                    alerta.setMensaje("Estación desconectada por inactividad");
+            if (desconectada) {
+                if (!offlineStations.contains(est.getStationId())) {
+                    offlineStations.add(est.getStationId());
+                    if (!db.hasDisconnectAlert(est.getStationId())) {
+                        db.insertAlert(est.getStationId(), 0, 0.0,
+                                "Estación desconectada por inactividad");
 
-                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
+                        AlertaDTO alerta = new AlertaDTO();
+                        alerta.setId(0);
+                        alerta.setFecha(new Date());
+                        alerta.setNombreEstacion(est.getStationModel());
+                        alerta.setSensorNombre("N/A");
+                        alerta.setTipoSensor("N/A");
+                        alerta.setValor(0.0);
+                        alerta.setMensaje("Estación desconectada por inactividad");
+
+                        messagingTemplate.convertAndSend("/topic/alertas", alerta);
+                    }
                 }
+            } else {
+                offlineStations.remove(est.getStationId());
             }
         }
     }
