@@ -3,6 +3,7 @@ package org.javadominicano.cmp.dto;
 import java.util.Date;
 
 public class AlertaDTO {
+    private int id;
     private Date fecha;
     private String nombreEstacion;
     private String sensorNombre;
@@ -11,6 +12,8 @@ public class AlertaDTO {
     private String mensaje;
 
     // Getters y Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
     public Date getFecha() { return fecha; }
     public void setFecha(Date fecha) { this.fecha = fecha; }
 

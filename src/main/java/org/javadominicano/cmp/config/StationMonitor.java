@@ -1,0 +1,53 @@
+package org.javadominicano.cmp.config;
+
+import org.javadominicano.cmp.DatabaseManager;
+import org.javadominicano.cmp.dto.AlertaDTO;
+import org.javadominicano.cmp.model.StationModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.List;
+
+@Service
+public class StationMonitor {
+    private final DatabaseManager db = new DatabaseManager(
+            "jdbc:mysql://192.168.100.168/MqttBase",
+            "usermqtt",
+            "Mqtt1234!"
+    );
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    public StationMonitor(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    public void checkStations() {
+        List<StationModel> estaciones = db.getStations();
+        Date now = new Date();
+        for (StationModel est : estaciones) {
+            Date last = db.getLastRecordTimeByStation(est.getStationId());
+            if (last == null || now.getTime() - last.getTime() > 10000) {
+                if (!db.hasDisconnectAlert(est.getStationId())) {
+                    db.insertAlert(est.getStationId(), 0, 0.0,
+                            "Estación desconectada por inactividad");
+
+                    AlertaDTO alerta = new AlertaDTO();
+                    alerta.setId(0);
+                    alerta.setFecha(new Date());
+                    alerta.setNombreEstacion(est.getStationModel());
+                    alerta.setSensorNombre("N/A");
+                    alerta.setTipoSensor("N/A");
+                    alerta.setValor(0.0);
+                    alerta.setMensaje("Estación desconectada por inactividad");
+
+                    messagingTemplate.convertAndSend("/topic/alertas", alerta);
+                }
+            }
+        }
+    }
+}
