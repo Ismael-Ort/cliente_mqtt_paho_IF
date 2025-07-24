@@ -21,6 +21,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -101,6 +102,9 @@ public class EstacionController {
                             break;
                         case "viento":
                             data.put("viento", valor);
+                            break;
+                        case "direccion_viento":
+                            data.put("direccion_viento", valor);
                             break;
                         case "precipitacion":
                         case "precipitación":
@@ -575,6 +579,12 @@ public class EstacionController {
     @ResponseBody
     public List<AlertaDTO> obtenerAlertas() {
         return dbManager.getAlertasActivas();
+    }
+
+    @DeleteMapping("/alertas/{id}")
+    public ResponseEntity<Void> eliminarAlerta(@PathVariable int id) {
+        dbManager.deleteAlerta(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/dashboard/sensor/{id}/toggle")

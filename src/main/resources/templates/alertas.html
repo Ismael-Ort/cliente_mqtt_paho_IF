@@ -72,6 +72,7 @@
                 <th>Umbral</th>
                 <th>Fecha</th>
                 <th>Estado</th>
+                <th sec:authorize="hasRole('ADMIN')">Acciones</th>
             </tr>
             </thead>
             <tbody>
@@ -83,6 +84,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script th:inline="javascript">
+    const isAdmin = [[${#authorization.expression('hasRole(''ADMIN'')')}]];
+</script>
 
 <script>
 const estaciones = [];
@@ -129,10 +133,10 @@ function cargarAlertas() {
     fetch('/api/alertas')
         .then(r => r.json())
         .then(data => {
-            alertas = data.map((a, idx) => ({
-                id: idx + 1,
+            alertas = data.map(a => ({
+                id: a.id,
                 estacion: a.nombreEstacion,
-                sensor: a.sensorNombre,
+                sensor: a.sensorNombre || 'N/A',
                 tipo: a.mensaje && a.mensaje.toLowerCase().includes('baja') ? 'BAJA' : 'ALTA',
                 umbral: a.valor,
                 fecha: new Date(a.fecha).toLocaleString(),
@@ -147,18 +151,8 @@ function conectarWS() {
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
     stompClient.connect({}, () => {
-        stompClient.subscribe('/topic/alertas', msg => {
-            const a = JSON.parse(msg.body);
-            alertas.unshift({
-                id: alertas.length + 1,
-                estacion: a.nombreEstacion,
-                sensor: a.sensorNombre,
-                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baja') ? 'BAJA' : 'ALTA',
-                umbral: a.valor,
-                fecha: new Date(a.fecha).toLocaleString(),
-                estado: 'Activo'
-            });
-            aplicarFiltros();
+        stompClient.subscribe('/topic/alertas', () => {
+            cargarAlertas();
         });
     });
 }
@@ -171,6 +165,13 @@ function renderTabla(datos) {
     pageData.forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.tipo}</td><td>${a.umbral}</td><td>${a.fecha}</td><td>${a.estado}</td>`;
+        if(isAdmin) {
+            const td = document.createElement('td');
+            td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
+            tr.appendChild(td);
+        } else {
+            tr.appendChild(document.createElement('td'));
+        }
         tbody.appendChild(tr);
     });
     renderPaginacion(datos.length);
@@ -187,6 +188,16 @@ function renderPaginacion(total) {
         btn.addEventListener('click',()=>{currentPage=i;aplicarFiltros();});
         pag.appendChild(btn);
     }
+}
+
+function eliminarAlerta(id) {
+  fetch(`/alertas/${id}`, { method: 'DELETE' })
+    .then(res => {
+      if(res.ok) {
+        alert('✅ Alerta eliminada');
+        cargarAlertas();
+      }
+    });
 }
 
 function aplicarFiltros() {
@@ -221,10 +232,6 @@ document.getElementById('alertForm').addEventListener('submit', e => {
 
 cargarEstaciones();
 cargarAlertas();
-
-conectarWS();
-
-
 conectarWS();
 
 </script>
