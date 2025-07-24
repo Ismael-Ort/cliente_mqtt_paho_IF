@@ -169,8 +169,10 @@ function renderTabla(datos) {
             const td = document.createElement('td');
             td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
             tr.appendChild(td);
+
         } else {
             tr.appendChild(document.createElement('td'));
+
         }
         tbody.appendChild(tr);
     });
