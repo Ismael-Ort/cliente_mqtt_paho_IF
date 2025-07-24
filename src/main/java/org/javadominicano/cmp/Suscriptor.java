@@ -53,9 +53,9 @@ public class Suscriptor {
             for (int i = 1; i <= 4; i++) {
                 client.subscribe("/itt363-grupo3/estacion-" + i + "/BME280/#");
                 client.subscribe("/itt363-grupo3/estacion-" + i + "/HW103/#");
-                /*client.subscribe("/itt363-grupo3/estacion-" + i + "/Anemometro/#");
+                client.subscribe("/itt363-grupo3/estacion-" + i + "/Anemometro/#");
                 client.subscribe("/itt363-grupo3/estacion-" + i + "/Pluviometro/#");
-                client.subscribe("/itt363-grupo3/estacion-" + i + "/Veleta/#");*/
+                client.subscribe("/itt363-grupo3/estacion-" + i + "/Veleta/#");
             }
 
             //Suscribirse a los topics de sensores físicos
