@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+
 import java.util.Collections;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,8 +24,12 @@ public class StationMonitor {
             "Mqtt1234!"
     );
     private final SimpMessagingTemplate messagingTemplate;
+
     private final Set<Integer> offlineStations =
             Collections.synchronizedSet(new HashSet<>());
+
+    private final Set<Integer> offlineStations = new HashSet<>();
+
 
     @Autowired
     public StationMonitor(SimpMessagingTemplate messagingTemplate) {
