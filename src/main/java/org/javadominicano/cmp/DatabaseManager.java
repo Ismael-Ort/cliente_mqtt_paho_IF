@@ -127,6 +127,29 @@ public class DatabaseManager {
         return null;
     }
 
+    public SensorModel getSensorById(int sensorId) {
+        String query = "SELECT * FROM Sensor WHERE sensor_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, sensorId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    SensorModel s = new SensorModel();
+                    s.setSensorId(rs.getInt("sensor_id"));
+                    s.setStationId(rs.getInt("station_id"));
+                    s.setSensorModel(rs.getString("sensor_model"));
+                    s.setSensorType(rs.getString("sensor_type"));
+                    s.setUnit(rs.getString("unit"));
+                    s.setActivo(rs.getBoolean("activo"));
+                    return s;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public int getOrCreateStation(String stationModel) {
     try (Connection conn = getConnection()) {
         // Buscar estación existente

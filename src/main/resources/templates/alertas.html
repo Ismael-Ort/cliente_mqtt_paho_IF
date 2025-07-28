@@ -134,7 +134,7 @@ function cargarAlertas() {
                 id: a.id,
                 estacion: a.nombreEstacion,
                 sensor: a.sensorNombre || 'N/A',
-                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baja') ? 'BAJA' : 'ALTA',
+                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA',
                 umbral: a.valor,
                 fecha: new Date(a.fecha).toLocaleString(),
                 estado: 'Activo'
