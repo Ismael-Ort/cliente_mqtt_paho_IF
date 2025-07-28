@@ -15,16 +15,13 @@ import java.util.List;
 
 @Service
 public class AlertRuleChecker {
-    private final DatabaseManager db = new DatabaseManager(
-            "jdbc:mysql://192.168.100.168/MqttBase",
-            "usermqtt",
-            "Mqtt1234!"
-    );
+    private final DatabaseManager db;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Autowired
-    public AlertRuleChecker(SimpMessagingTemplate messagingTemplate) {
+    public AlertRuleChecker(SimpMessagingTemplate messagingTemplate, DatabaseManager db) {
         this.messagingTemplate = messagingTemplate;
+        this.db = db;
     }
 
     @Scheduled(fixedDelay = 60000)

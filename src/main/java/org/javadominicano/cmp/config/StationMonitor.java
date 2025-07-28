@@ -18,22 +18,17 @@ import java.util.Set;
 
 @Service
 public class StationMonitor {
-    private final DatabaseManager db = new DatabaseManager(
-            "jdbc:mysql://192.168.100.168/MqttBase",
-            "usermqtt",
-            "Mqtt1234!"
-    );
+    private final DatabaseManager db;
     private final SimpMessagingTemplate messagingTemplate;
 
     private final Set<Integer> offlineStations =
             Collections.synchronizedSet(new HashSet<>());
 
-    private final Set<Integer> offlineStations = new HashSet<>();
-
 
     @Autowired
-    public StationMonitor(SimpMessagingTemplate messagingTemplate) {
+    public StationMonitor(SimpMessagingTemplate messagingTemplate, DatabaseManager db) {
         this.messagingTemplate = messagingTemplate;
+        this.db = db;
     }
 
     @Scheduled(fixedDelay = 5000)
