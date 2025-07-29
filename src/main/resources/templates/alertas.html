@@ -68,10 +68,9 @@
                 <th>ID</th>
                 <th>Estación</th>
                 <th>Sensor</th>
-                <th>Tipo</th>
-                <th>Umbral</th>
+                <th>Mensaje</th>
+                <th>Valor</th>
                 <th>Fecha</th>
-                <th>Estado</th>
                 <th sec:authorize="hasRole('ADMIN')">Acciones</th>
             </tr>
             </thead>
@@ -135,10 +134,29 @@ function cargarAlertas() {
                 id: a.id,
                 estacion: a.estacion,
                 sensor: a.sensor || 'N/A',
+
                 tipo: a.tipo,
                 umbral: a.umbral,
                 fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
                 estado: a.estado
+
+                mensaje: a.mensaje,
+                valor: a.valor,
+                fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
+                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA'
+
+    fetch('/api/reglas-alerta')
+        .then(r => r.json())
+        .then(data => {
+            alertas = data.map(a => ({
+                id: a.ruleId,
+                estacion: a.nombreEstacion,
+                sensor: a.sensorNombre || 'N/A',
+                tipo: a.tipo,
+                umbral: a.umbral,
+                fecha: a.fechaCreacion ? new Date(a.fechaCreacion).toLocaleString() : 'N/D',
+                estado: a.activa ? 'Activa' : 'Inactiva'
+
             }));
             aplicarFiltros();
         });
@@ -160,7 +178,15 @@ function renderTabla(datos) {
     tbody.innerHTML = '';
     if(datos.length === 0) {
         const tr = document.createElement('tr');
+
         tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+
+
+        tr.innerHTML = '<td colspan="7">No hay alertas registradas</td>';
+
+        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+
+
         tbody.appendChild(tr);
         renderPaginacion(0);
         return;
@@ -169,7 +195,7 @@ function renderTabla(datos) {
     const pageData = datos.slice(start, start+rowsPerPage);
     pageData.forEach(a => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.tipo}</td><td>${a.umbral}</td><td>${a.fecha}</td><td>${a.estado}</td>`;
+        tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.mensaje}</td><td>${a.valor}</td><td>${a.fecha}</td>`;
         if(isAdmin) {
             const td = document.createElement('td');
             td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
@@ -198,7 +224,7 @@ function renderPaginacion(total) {
 }
 
 function eliminarAlerta(id) {
-  fetch(`/alertas/${id}`, { method: 'DELETE' })
+  fetch(`/api/reglas-alerta/${id}`, { method: 'DELETE' })
     .then(res => {
       if(res.ok) {
         alert('✅ Alerta eliminada');

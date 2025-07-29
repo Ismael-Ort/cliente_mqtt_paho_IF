@@ -33,8 +33,10 @@ public class AlertRuleRestController {
         return ResponseEntity.noContent().build();
     }
 
+
     @GetMapping("/api/alertas/ocurridas")
     public List<WeatherAlertDTO> listarAlertasGeneradas() {
         return dbManager.getWeatherAlerts();
     }
+
 }

@@ -611,6 +611,7 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
             dto.setId(rs.getInt("id"));
             dto.setEstacion(rs.getString("estacion"));
             dto.setSensor(rs.getString("sensor"));
+
             String mensaje = rs.getString("mensaje");
             String tipo = "N/A";
             if (mensaje != null) {
@@ -622,6 +623,12 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
             Timestamp ts = rs.getTimestamp("fecha");
             dto.setFecha(ts != null ? ts.toLocalDateTime() : null);
             dto.setEstado("Registrada");
+
+            dto.setMensaje(rs.getString("mensaje"));
+            dto.setValor(rs.getDouble("valor"));
+            Timestamp ts = rs.getTimestamp("fecha");
+            dto.setFecha(ts != null ? ts.toLocalDateTime() : null);
+
             list.add(dto);
         }
     } catch (SQLException e) {
