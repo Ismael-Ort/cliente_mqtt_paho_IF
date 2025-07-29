@@ -14,7 +14,7 @@ public class WeatherAlertDTO {
 
     private String mensaje;
     private double valor;
-    private LocalDateTime fecha;
+
 
 
     public int getId() { return id; }
@@ -43,8 +43,5 @@ public class WeatherAlertDTO {
 
     public double getValor() { return valor; }
     public void setValor(double valor) { this.valor = valor; }
-
-    public LocalDateTime getFecha() { return fecha; }
-    public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
 
 }

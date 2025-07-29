@@ -626,8 +626,6 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
 
             dto.setMensaje(rs.getString("mensaje"));
             dto.setValor(rs.getDouble("valor"));
-            Timestamp ts = rs.getTimestamp("fecha");
-            dto.setFecha(ts != null ? ts.toLocalDateTime() : null);
 
             list.add(dto);
         }
