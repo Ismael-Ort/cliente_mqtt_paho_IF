@@ -10,6 +10,7 @@ public class AlertRuleDTO {
     private String tipo;
     private double umbral;
     private boolean activa;
+    private java.util.Date fechaCreacion;
 
     public int getRuleId() {return ruleId;}
     public void setRuleId(int ruleId) {this.ruleId = ruleId;}
@@ -34,4 +35,7 @@ public class AlertRuleDTO {
 
     public boolean isActiva() {return activa;}
     public void setActiva(boolean activa) {this.activa = activa;}
+
+    public java.util.Date getFechaCreacion() {return fechaCreacion;}
+    public void setFechaCreacion(java.util.Date fechaCreacion) {this.fechaCreacion = fechaCreacion;}
 }

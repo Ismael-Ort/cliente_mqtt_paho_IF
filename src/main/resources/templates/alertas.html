@@ -127,17 +127,17 @@ function cargarSensores(estacionId) {
 }
 
 function cargarAlertas() {
-    fetch('/api/alertas')
+    fetch('/api/reglas-alerta')
         .then(r => r.json())
         .then(data => {
             alertas = data.map(a => ({
-                id: a.id,
+                id: a.ruleId,
                 estacion: a.nombreEstacion,
                 sensor: a.sensorNombre || 'N/A',
-                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA',
-                umbral: a.valor,
-                fecha: new Date(a.fecha).toLocaleString(),
-                estado: 'Activo'
+                tipo: a.tipo,
+                umbral: a.umbral,
+                fecha: a.fechaCreacion ? new Date(a.fechaCreacion).toLocaleString() : 'N/D',
+                estado: a.activa ? 'Activa' : 'Inactiva'
             }));
             aplicarFiltros();
         });
@@ -157,6 +157,13 @@ function conectarWS() {
 function renderTabla(datos) {
     const tbody = document.querySelector('#alertTable tbody');
     tbody.innerHTML = '';
+    if(datos.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+        tbody.appendChild(tr);
+        renderPaginacion(0);
+        return;
+    }
     const start = (currentPage-1)*rowsPerPage;
     const pageData = datos.slice(start, start+rowsPerPage);
     pageData.forEach(a => {
@@ -190,7 +197,7 @@ function renderPaginacion(total) {
 }
 
 function eliminarAlerta(id) {
-  fetch(`/alertas/${id}`, { method: 'DELETE' })
+  fetch(`/api/reglas-alerta/${id}`, { method: 'DELETE' })
     .then(res => {
       if(res.ok) {
         alert('✅ Alerta eliminada');
