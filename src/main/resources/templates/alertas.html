@@ -10,7 +10,7 @@
     <h2>WeatherNet</h2>
     <ul>
         <li><a href="/dashboard">Dashboard</a></li>
-        <li sec:authorize="hasRole('ADMIN')"><a href="/dashboard/administrar-estaciones">Estaciones</a></li>
+        <li><a href="/dashboard/administrar-estaciones">Estaciones</a></li>
         <li><a href="/dashboard/reportes">Reportes</a></li>
         <li><a href="/dashboard/graficos">Gráficos</a></li>
         <li><a href="/dashboard/alertas" class="active">Alertas</a></li>
@@ -72,7 +72,7 @@
                 <th>Umbral</th>
                 <th>Fecha</th>
                 <th>Estado</th>
-                <th sec:authorize="hasRole('ADMIN')">Acciones</th>
+                <th>Acciones</th>
             </tr>
             </thead>
             <tbody>
@@ -127,17 +127,17 @@ function cargarSensores(estacionId) {
 }
 
 function cargarAlertas() {
-    fetch('/api/alertas')
+    fetch('/api/alertas/ocurridas')
         .then(r => r.json())
         .then(data => {
             alertas = data.map(a => ({
                 id: a.id,
-                estacion: a.nombreEstacion,
-                sensor: a.sensorNombre || 'N/A',
-                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA',
-                umbral: a.valor,
-                fecha: new Date(a.fecha).toLocaleString(),
-                estado: 'Activo'
+                estacion: a.estacion,
+                sensor: a.sensor || 'N/A',
+                tipo: a.tipo,
+                umbral: a.umbral,
+                fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
+                estado: a.estado
             }));
             aplicarFiltros();
         });
@@ -157,20 +157,21 @@ function conectarWS() {
 function renderTabla(datos) {
     const tbody = document.querySelector('#alertTable tbody');
     tbody.innerHTML = '';
+    if(datos.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+        tbody.appendChild(tr);
+        renderPaginacion(0);
+        return;
+    }
     const start = (currentPage-1)*rowsPerPage;
     const pageData = datos.slice(start, start+rowsPerPage);
     pageData.forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.tipo}</td><td>${a.umbral}</td><td>${a.fecha}</td><td>${a.estado}</td>`;
-        if(isAdmin) {
-            const td = document.createElement('td');
-            td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
-            tr.appendChild(td);
-
-        } else {
-            tr.appendChild(document.createElement('td'));
-
-        }
+        const td = document.createElement('td');
+        td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
+        tr.appendChild(td);
         tbody.appendChild(tr);
     });
     renderPaginacion(datos.length);
