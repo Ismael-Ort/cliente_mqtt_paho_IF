@@ -7,6 +7,7 @@ import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
+import org.javadominicano.cmp.dto.WeatherAlertDTO;
 import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
 import java.util.Map;
@@ -18,6 +19,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class DatabaseManager {
 
     private final String dbUrl;
@@ -585,6 +589,47 @@ public void deleteAlerta(int alertaId) {
     }
 }
 
+public List<WeatherAlertDTO> getWeatherAlerts() {
+    List<WeatherAlertDTO> list = new ArrayList<>();
+    String sql = """
+        SELECT wa.alert_id AS id,
+               st.station_model AS estacion,
+               se.sensor_model AS sensor,
+               wa.message AS mensaje,
+               wa.value AS valor,
+               wa.alert_datetime AS fecha
+        FROM WeatherAlert wa
+        JOIN Station st ON wa.station_id = st.station_id
+        LEFT JOIN Sensor se ON wa.sensor_id = se.sensor_id
+        ORDER BY wa.alert_datetime DESC
+    """;
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql);
+         ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+            WeatherAlertDTO dto = new WeatherAlertDTO();
+            dto.setId(rs.getInt("id"));
+            dto.setEstacion(rs.getString("estacion"));
+            dto.setSensor(rs.getString("sensor"));
+            String mensaje = rs.getString("mensaje");
+            String tipo = "N/A";
+            if (mensaje != null) {
+                String m = mensaje.toLowerCase();
+                if (m.contains("bajo")) tipo = "BAJA"; else if (m.contains("alto")) tipo = "ALTA";
+            }
+            dto.setTipo(tipo);
+            dto.setUmbral(rs.getDouble("valor"));
+            Timestamp ts = rs.getTimestamp("fecha");
+            dto.setFecha(ts != null ? ts.toLocalDateTime() : null);
+            dto.setEstado("Registrada");
+            list.add(dto);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return list;
+}
+
 public boolean hasDisconnectAlert(int stationId) {
     String sql = "SELECT COUNT(*) FROM WeatherAlert WHERE station_id = ? AND sensor_id = 0 AND message = ?";
     try (Connection conn = getConnection();
@@ -669,6 +714,18 @@ public boolean hasDisconnectAlert(int stationId) {
 
     }
 
+    public void deleteAlertRule(int ruleId) {
+        String sql = "DELETE FROM AlertRule WHERE rule_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, ruleId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     public List<AlertRuleDTO> getAlertRuleDTOs() {
         List<AlertRuleDTO> list = new ArrayList<>();
         String sql = """
@@ -691,6 +748,7 @@ public boolean hasDisconnectAlert(int stationId) {
                 dto.setActiva(rs.getBoolean("activa"));
                 dto.setNombreEstacion(rs.getString("station_model"));
                 dto.setSensorNombre(rs.getString("sensor_model"));
+                dto.setFechaCreacion(rs.getTimestamp("fecha_creacion"));
                 list.add(dto);
             }
         } catch (SQLException e) {
