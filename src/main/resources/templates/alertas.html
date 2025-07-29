@@ -137,6 +137,19 @@ function cargarAlertas() {
                 valor: a.valor,
                 fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
                 tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA'
+
+    fetch('/api/reglas-alerta')
+        .then(r => r.json())
+        .then(data => {
+            alertas = data.map(a => ({
+                id: a.ruleId,
+                estacion: a.nombreEstacion,
+                sensor: a.sensorNombre || 'N/A',
+                tipo: a.tipo,
+                umbral: a.umbral,
+                fecha: a.fechaCreacion ? new Date(a.fechaCreacion).toLocaleString() : 'N/D',
+                estado: a.activa ? 'Activa' : 'Inactiva'
+
             }));
             aplicarFiltros();
         });
@@ -158,7 +171,11 @@ function renderTabla(datos) {
     tbody.innerHTML = '';
     if(datos.length === 0) {
         const tr = document.createElement('tr');
+
         tr.innerHTML = '<td colspan="7">No hay alertas registradas</td>';
+
+        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+
         tbody.appendChild(tr);
         renderPaginacion(0);
         return;
@@ -196,7 +213,7 @@ function renderPaginacion(total) {
 }
 
 function eliminarAlerta(id) {
-  fetch(`/alertas/${id}`, { method: 'DELETE' })
+  fetch(`/api/reglas-alerta/${id}`, { method: 'DELETE' })
     .then(res => {
       if(res.ok) {
         alert('✅ Alerta eliminada');
