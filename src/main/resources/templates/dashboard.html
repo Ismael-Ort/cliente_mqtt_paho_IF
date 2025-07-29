@@ -143,6 +143,7 @@ function cargarDashboard() {
                         <li>💧 Humedad: ${est.data?.humedad ?? 'N/D'} %</li>
                         <li>⬇️ Presión: ${est.data?.presion ?? 'N/D'} hPa</li>
                         <li>💨 Viento: ${est.data?.viento ?? 'N/D'} m/s</li>
+                        <li>🌬️ Dirección Viento: ${est.data?.direccion_viento ?? 'N/D'} °</li>
                         <li>🌧️ Precipitación: ${est.data?.precipitacion ?? 'N/D'} mm</li>
                         <li>🌱 Humedad Suelo: ${est.data?.humedad_suelo ?? 'N/D'} %</li>
                     </ul>
@@ -204,6 +205,7 @@ function actualizarUIEstacion(dto) {
             <li>💧 Humedad: ${dto.data?.humedad ?? 'N/D'} %</li>
             <li>⬇️ Presión: ${dto.data?.presion ?? 'N/D'} hPa</li>
             <li>💨 Viento: ${dto.data?.viento ?? 'N/D'} m/s</li>
+            <li>🌬️ Dirección Viento: ${dto.data?.direccion_viento ?? 'N/D'} °</li>
             <li>🌧️ Precipitación: ${dto.data?.precipitacion ?? 'N/D'} mm</li>
             <li>🌱 Humedad Suelo: ${dto.data?.humedad_suelo ?? 'N/D'} %</li>
         </ul>`;

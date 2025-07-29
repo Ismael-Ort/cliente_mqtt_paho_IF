@@ -18,6 +18,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class DatabaseManager {
 
     private final String dbUrl;
@@ -669,6 +672,18 @@ public boolean hasDisconnectAlert(int stationId) {
 
     }
 
+    public void deleteAlertRule(int ruleId) {
+        String sql = "DELETE FROM AlertRule WHERE rule_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, ruleId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     public List<AlertRuleDTO> getAlertRuleDTOs() {
         List<AlertRuleDTO> list = new ArrayList<>();
         String sql = """
@@ -691,6 +706,7 @@ public boolean hasDisconnectAlert(int stationId) {
                 dto.setActiva(rs.getBoolean("activa"));
                 dto.setNombreEstacion(rs.getString("station_model"));
                 dto.setSensorNombre(rs.getString("sensor_model"));
+                dto.setFechaCreacion(rs.getTimestamp("fecha_creacion"));
                 list.add(dto);
             }
         } catch (SQLException e) {
