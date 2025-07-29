@@ -7,6 +7,7 @@ import org.javadominicano.cmp.model.AlertRuleModel;
 import org.javadominicano.cmp.dto.ReporteRecordDTO;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
+import org.javadominicano.cmp.dto.WeatherAlertDTO;
 import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
 import java.util.Map;
@@ -586,6 +587,40 @@ public void deleteAlerta(int alertaId) {
     } catch (SQLException e) {
         e.printStackTrace();
     }
+}
+
+public List<WeatherAlertDTO> getWeatherAlerts() {
+    List<WeatherAlertDTO> list = new ArrayList<>();
+    String sql = """
+        SELECT wa.alert_id AS id,
+               st.station_model AS estacion,
+               se.sensor_model AS sensor,
+               wa.message AS mensaje,
+               wa.value AS valor,
+               wa.alert_datetime AS fecha
+        FROM WeatherAlert wa
+        JOIN Station st ON wa.station_id = st.station_id
+        LEFT JOIN Sensor se ON wa.sensor_id = se.sensor_id
+        ORDER BY wa.alert_datetime DESC
+    """;
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql);
+         ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+            WeatherAlertDTO dto = new WeatherAlertDTO();
+            dto.setId(rs.getInt("id"));
+            dto.setEstacion(rs.getString("estacion"));
+            dto.setSensor(rs.getString("sensor"));
+            dto.setMensaje(rs.getString("mensaje"));
+            dto.setValor(rs.getDouble("valor"));
+            Timestamp ts = rs.getTimestamp("fecha");
+            dto.setFecha(ts != null ? ts.toLocalDateTime() : null);
+            list.add(dto);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return list;
 }
 
 public boolean hasDisconnectAlert(int stationId) {
