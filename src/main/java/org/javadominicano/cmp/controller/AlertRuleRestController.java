@@ -2,7 +2,6 @@ package org.javadominicano.cmp.controller;
 
 import org.javadominicano.cmp.DatabaseManager;
 import org.javadominicano.cmp.dto.AlertRuleDTO;
-
 import org.javadominicano.cmp.dto.WeatherAlertDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

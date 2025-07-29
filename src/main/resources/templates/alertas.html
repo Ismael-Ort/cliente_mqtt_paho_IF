@@ -84,7 +84,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
-<script>
+<script th:inline="javascript">
+const isAdmin = /*[[${#authorization.expression('hasRole(''ADMIN'')')}]]*/ false;
 const estaciones = [];
 let alertas = [];
 let currentPage = 1;
@@ -133,6 +134,12 @@ function cargarAlertas() {
                 id: a.id,
                 estacion: a.estacion,
                 sensor: a.sensor || 'N/A',
+
+                tipo: a.tipo,
+                umbral: a.umbral,
+                fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
+                estado: a.estado
+
                 mensaje: a.mensaje,
                 valor: a.valor,
                 fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
@@ -172,9 +179,13 @@ function renderTabla(datos) {
     if(datos.length === 0) {
         const tr = document.createElement('tr');
 
+        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+
+
         tr.innerHTML = '<td colspan="7">No hay alertas registradas</td>';
 
         tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
+
 
         tbody.appendChild(tr);
         renderPaginacion(0);
