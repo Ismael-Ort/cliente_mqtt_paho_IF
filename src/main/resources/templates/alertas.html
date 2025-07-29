@@ -68,9 +68,10 @@
                 <th>ID</th>
                 <th>Estación</th>
                 <th>Sensor</th>
-                <th>Mensaje</th>
-                <th>Valor</th>
-                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Umbral</th>
+                <th>Estado</th>
+                <th>Fecha Creación</th>
                 <th sec:authorize="hasRole('ADMIN')">Acciones</th>
             </tr>
             </thead>
@@ -127,25 +128,9 @@ function cargarSensores(estacionId) {
 }
 
 function cargarAlertas() {
-    fetch('/api/alertas/ocurridas')
-        .then(r => r.json())
-        .then(data => {
-            alertas = data.map(a => ({
-                id: a.id,
-                estacion: a.estacion,
-                sensor: a.sensor || 'N/A',
-
-                tipo: a.tipo,
-                umbral: a.umbral,
-                fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
-                estado: a.estado
-
-                mensaje: a.mensaje,
-                valor: a.valor,
-                fecha: a.fecha ? new Date(a.fecha).toLocaleString() : 'N/D',
-                tipo: a.mensaje && a.mensaje.toLowerCase().includes('baj') ? 'BAJA' : 'ALTA'
-
-    fetch('/api/reglas-alerta')
+    // Se corrige para apuntar al endpoint correcto de reglas de alerta
+    // y se limpia el código con errores de sintaxis.
+    fetch('/api/alertas/rules')
         .then(r => r.json())
         .then(data => {
             alertas = data.map(a => ({
@@ -154,12 +139,12 @@ function cargarAlertas() {
                 sensor: a.sensorNombre || 'N/A',
                 tipo: a.tipo,
                 umbral: a.umbral,
-                fecha: a.fechaCreacion ? new Date(a.fechaCreacion).toLocaleString() : 'N/D',
-                estado: a.activa ? 'Activa' : 'Inactiva'
-
+                fecha: a.fechaCreacion ? new Date(a.fechaCreacion).toLocaleString('es-DO') : 'N/D',
+                estado: a.activa ? 'Activa' : 'Inactiva',
             }));
             aplicarFiltros();
-        });
+        })
+        .catch(error => console.error('Error al cargar las reglas de alerta:', error));
 }
 
 
@@ -178,15 +163,8 @@ function renderTabla(datos) {
     tbody.innerHTML = '';
     if(datos.length === 0) {
         const tr = document.createElement('tr');
-
-        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
-
-
-        tr.innerHTML = '<td colspan="7">No hay alertas registradas</td>';
-
-        tr.innerHTML = '<td colspan="8">No hay alertas registradas</td>';
-
-
+        // Se corrige el colspan y el mensaje
+        tr.innerHTML = '<td colspan="8">No se encontraron reglas de alerta.</td>';
         tbody.appendChild(tr);
         renderPaginacion(0);
         return;
@@ -195,7 +173,8 @@ function renderTabla(datos) {
     const pageData = datos.slice(start, start+rowsPerPage);
     pageData.forEach(a => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.mensaje}</td><td>${a.valor}</td><td>${a.fecha}</td>`;
+        // Se ajusta para mostrar los datos de las reglas de alerta
+        tr.innerHTML = `<td>${a.id}</td><td>${a.estacion}</td><td>${a.sensor}</td><td>${a.tipo}</td><td>${a.umbral}</td><td>${a.estado}</td><td>${a.fecha}</td>`;
         if(isAdmin) {
             const td = document.createElement('td');
             td.innerHTML = `<button class="btn btn-danger btn-sm" onclick="eliminarAlerta(${a.id})">Eliminar</button>`;
@@ -203,7 +182,6 @@ function renderTabla(datos) {
 
         } else {
             tr.appendChild(document.createElement('td'));
-
         }
         tbody.appendChild(tr);
     });
@@ -224,13 +202,21 @@ function renderPaginacion(total) {
 }
 
 function eliminarAlerta(id) {
-  fetch(`/api/reglas-alerta/${id}`, { method: 'DELETE' })
-    .then(res => {
-      if(res.ok) {
-        alert('✅ Alerta eliminada');
-        cargarAlertas();
-      }
-    });
+    if (!confirm('¿Estás seguro de que quieres eliminar esta regla de alerta?')) {
+        return;
+    }
+    // Se corrige el endpoint para que coincida con el controlador
+    fetch(`/api/alertas/rules/${id}`, { method: 'DELETE' })
+        .then(res => {
+            if (res.ok) {
+                alert('✅ Regla de alerta eliminada');
+                cargarAlertas();
+            } else {
+                alert('❌ Error al eliminar la regla.');
+                console.error('Error al eliminar:', res);
+            }
+        })
+        .catch(error => console.error('Error en fetch al eliminar:', error));
 }
 
 function aplicarFiltros() {
@@ -252,14 +238,16 @@ document.getElementById('alertForm').addEventListener('submit', e => {
     payload.append('stationId', document.getElementById('estacionSelect').value);
     payload.append('sensorId', document.getElementById('sensorSelect').value);
     payload.append('umbral', document.getElementById('umbralInput').value);
-    payload.append('mensaje', document.getElementById('tipoSelect').value);
-    fetch('/api/alertas/manual', {
+    payload.append('tipo', document.getElementById('tipoSelect').value); // Se corrige el nombre del parámetro
+
+    // Se corrige el endpoint para crear una regla
+    fetch('/api/alertas/rules', {
         method:'POST',
         body: payload
     }).then(()=>{
         e.target.reset();
         document.getElementById('sensorSelect').disabled=true;
-        cargarAlertas();
+        cargarAlertas(); // Recargar la tabla para ver la nueva regla
     });
 });
 

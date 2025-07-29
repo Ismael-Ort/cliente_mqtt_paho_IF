@@ -625,6 +625,14 @@ public class EstacionController {
         return "alertas";
     }
 
+    @DeleteMapping("/api/alertas/rules/{id}")
+    @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> eliminarReglaDeAlerta(@PathVariable("id") int ruleId) {
+        dbManager.deleteAlertRule(ruleId);
+        return ResponseEntity.ok().build();
+    }
+
 
     @GetMapping("/dashboard/graficos")
     public String verGraficos(Model model) {
