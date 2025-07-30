@@ -3,6 +3,7 @@ package org.javadominicano.cmp;
 import com.google.gson.Gson;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Component;
 import org.javadominicano.cmp.dto.AlertaDTO;
 import org.javadominicano.cmp.dto.StationStatusDTO;
 import org.javadominicano.cmp.model.RecordModel;
@@ -12,19 +13,22 @@ import org.javadominicano.cmp.model.StationModel;
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
+@Component
 public class SuscriptorCallback implements MqttCallback {
 
-    private final DatabaseManager dbSimulado;
-    private final DatabaseManager dbFisico;
+    private final DatabaseManager dbManager;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ExternalApiService externalApiService;
     private final Gson gson = new Gson();
 
-    public SuscriptorCallback(DatabaseManager dbSimulado, DatabaseManager dbFisico,
-                              SimpMessagingTemplate messagingTemplate) {
-        this.dbSimulado = dbSimulado;
-        this.dbFisico = dbFisico;
+    public SuscriptorCallback(DatabaseManager dbManager,
+                              SimpMessagingTemplate messagingTemplate,
+                              ExternalApiService externalApiService) {
+        this.dbManager = dbManager;
         this.messagingTemplate = messagingTemplate;
+        this.externalApiService = externalApiService;
     }
 
     @Override
@@ -96,10 +100,13 @@ public class SuscriptorCallback implements MqttCallback {
             }
 
             String stationModel = "Estacion_Fisica_1";
-            int stationId = dbFisico.getOrCreateStation(stationModel);
-            int sensorId = dbFisico.getOrCreateSensor(stationId, sensorModel, sensorType, unit);
+            int stationId = dbManager.getOrCreateStation(stationModel);
+            int sensorId = dbManager.getOrCreateSensor(stationId, sensorModel, sensorType, unit);
 
-            dbFisico.insertRecord(sensorId, valor, fecha);
+            dbManager.insertRecord(sensorId, valor, fecha);
+
+            // Intentar enviar los datos agregados al HUB
+            intentarEnviarAlHub(stationId);
 
             System.out.printf("✅ Registro físico insertado: estación=%s, sensor=%s, valor=%.2f\n",
                     stationModel, sensorModel, valor);
@@ -111,7 +118,7 @@ public class SuscriptorCallback implements MqttCallback {
             }
 
             // 🔔 Evaluar reglas de alerta configuradas
-            dbFisico.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
+            dbManager.getAlertRulesBySensor(stationId, sensorId).forEach(regla -> {
                 try {
                     String tipo = regla.getTipo().toUpperCase();
                     boolean cumple;
@@ -130,8 +137,8 @@ public class SuscriptorCallback implements MqttCallback {
                                 ? "Umbral alto superado"
                                 : "Umbral bajo alcanzado";
 
-                        dbFisico.insertAlert(stationId, sensorId, valor, msg);
-                        dbFisico.updateAlertRuleState(regla.getRuleId(), true);
+                        dbManager.insertAlert(stationId, sensorId, valor, msg);
+                        dbManager.updateAlertRuleState(regla.getRuleId(), true);
 
                         AlertaDTO alerta = buildAlertaDTO(stationId, sensorModel, sensorType, valor, msg);
                         messagingTemplate.convertAndSend("/topic/alertas", alerta);
@@ -139,7 +146,7 @@ public class SuscriptorCallback implements MqttCallback {
                         System.out.printf("🚨 Alerta activada: %s | Valor: %.2f | Regla ID: %d\n",
                                 msg, valor, regla.getRuleId());
                     } else if (!cumple && regla.isActiva()) {
-                        dbFisico.updateAlertRuleState(regla.getRuleId(), false);
+                        dbManager.updateAlertRuleState(regla.getRuleId(), false);
                         System.out.printf("✅ Alerta desactivada (Regla ID %d)\n", regla.getRuleId());
                     }
 
@@ -155,8 +162,54 @@ public class SuscriptorCallback implements MqttCallback {
         }
     }
 
+    private void intentarEnviarAlHub(int stationId) {
+        // Buscar los sensores de temperatura y humedad de esta estación
+        SensorModel tempSensor = null;
+        SensorModel humSensor = null;
+
+        for (SensorModel s : dbManager.getSensorsByStation(stationId)) {
+            if ("temperatura".equalsIgnoreCase(s.getSensorType())) {
+                tempSensor = s;
+            } else if ("humedad".equalsIgnoreCase(s.getSensorType())) {
+                humSensor = s;
+            }
+        }
+
+        if (tempSensor == null || humSensor == null) {
+            // No tenemos ambos sensores para esta estación, no se puede enviar.
+            return;
+        }
+
+        // Obtener la última lectura de cada uno
+        RecordModel tempRecord = dbManager.getLastRecord(tempSensor.getSensorId());
+        RecordModel humRecord = dbManager.getLastRecord(humSensor.getSensorId());
+
+        if (tempRecord == null || humRecord == null) {
+            // Falta alguna de las lecturas, no se puede enviar.
+            return;
+        }
+
+        // Comprobar que ambas lecturas son recientes (ej. en los últimos 2 minutos)
+        long now = new Date().getTime();
+        if (now - tempRecord.getRecordDatetime().getTime() > TimeUnit.MINUTES.toMillis(2) ||
+            now - humRecord.getRecordDatetime().getTime() > TimeUnit.MINUTES.toMillis(2)) {
+            // Alguna lectura es demasiado antigua.
+            return;
+        }
+
+        // ¡Tenemos todo! Construimos el payload y lo enviamos.
+        Map<String, Object> data = new HashMap<>();
+        data.put("temperatura", tempRecord.getValue());
+        data.put("humedad", humRecord.getValue());
+
+        // Usamos la fecha de la lectura más reciente como referencia
+        Date fechaReferencia = tempRecord.getRecordDatetime().after(humRecord.getRecordDatetime()) ? tempRecord.getRecordDatetime() : humRecord.getRecordDatetime();
+
+        externalApiService.sendReading(fechaReferencia, data);
+    }
+
     private StationStatusDTO buildStationStatus(int stationId) {
-        StationModel station = dbFisico.getStationById(stationId);
+        StationModel station = dbManager.getStationById(stationId);
         if (station == null) return null;
 
         StationStatusDTO dto = new StationStatusDTO();
@@ -165,8 +218,8 @@ public class SuscriptorCallback implements MqttCallback {
         Map<String, Double> data = new HashMap<>();
         Date last = null;
 
-        for (SensorModel s : dbFisico.getSensorsByStation(stationId)) {
-            RecordModel r = dbFisico.getLastRecord(s.getSensorId());
+        for (SensorModel s : dbManager.getSensorsByStation(stationId)) {
+            RecordModel r = dbManager.getLastRecord(s.getSensorId());
             if (r != null) {
                 String tipo = s.getSensorType().toLowerCase().trim().replace("ó", "o");
                 double val = Math.round(r.getValue() * 10.0) / 10.0;
@@ -197,7 +250,7 @@ public class SuscriptorCallback implements MqttCallback {
         AlertaDTO alerta = new AlertaDTO();
         alerta.setFecha(new Date());
 
-        StationModel est = dbFisico.getStationById(stationId);
+        StationModel est = dbManager.getStationById(stationId);
         alerta.setNombreEstacion(est != null ? est.getStationModel() : String.valueOf(stationId));
         alerta.setSensorNombre(sensorModel);
         alerta.setTipoSensor(sensorType);

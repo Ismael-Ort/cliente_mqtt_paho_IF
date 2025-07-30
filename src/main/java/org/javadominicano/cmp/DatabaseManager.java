@@ -20,45 +20,53 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-// Servicio para publicar lecturas en el HUB externo
-
-import org.javadominicano.cmp.ExternalApiService;
-import org.javadominicano.cmp.service.HubSenderService;
-
 @Service
-
 public class DatabaseManager {
 
+    private final DataSource dataSource;
 
-    private final String dbUrl;
-    private final String dbUser;
-    private final String dbPass;
-    private final ExternalApiService externalApi;
-    private final HubSenderService hubSenderService;
-
-
+    // Constructor para pruebas o uso fuera de Spring (no recomendado en la app principal)
     public DatabaseManager() {
-        this(new HubSenderService(), "jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
-    }
-
-    public DatabaseManager(String dbUrl, String dbUser, String dbPass) {
-        this(new HubSenderService(), dbUrl, dbUser, dbPass);
-    }
-
-
-    public DatabaseManager(HubSenderService hubSenderService, String dbUrl, String dbUser, String dbPass) {
-        this.dbUrl = dbUrl;
-        this.dbUser = dbUser;
-        this.dbPass = dbPass;
-        this.hubSenderService = hubSenderService;
-        this.externalApi = new ExternalApiService(hubSenderService);
+        this(createDefaultDataSource());
         createAlertRuleTable();
     }
 
+    // Constructor obsoleto, se mantiene por compatibilidad con clases que aún lo usan
+    public DatabaseManager(String dbUrl, String dbUser, String dbPass) {
+        this.dataSource = createSimpleDataSource(dbUrl, dbUser, dbPass);
+        createAlertRuleTable();
+    }
+
+    private static DataSource createDefaultDataSource() {
+        return createSimpleDataSource("jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
+    }
+
+    @Autowired
+    public DatabaseManager(DataSource dataSource) {
+        this.dataSource = dataSource;
+        createAlertRuleTable();
+    }
+
+    private static org.springframework.jdbc.datasource.SimpleDriverDataSource createSimpleDataSource(String url, String user, String pass) {
+        org.springframework.jdbc.datasource.SimpleDriverDataSource ds = new org.springframework.jdbc.datasource.SimpleDriverDataSource();
+        try {
+            ds.setDriverClass((Class<? extends Driver>) Class.forName("com.mysql.cj.jdbc.Driver"));
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        ds.setUrl(url);
+        ds.setUsername(user);
+        ds.setPassword(pass);
+        return ds;
+    }
+
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(dbUrl, dbUser, dbPass);
+        return dataSource.getConnection();
     }
 
     public List<StationModel> getStations() {
@@ -232,21 +240,6 @@ public int getOrCreateSensor(int stationId, String sensorModel, String sensorTyp
     return -1;
 }
 
-
-/*
-public void insertRecord(int sensorId, double value, Date date) {
-    String insert = "INSERT INTO Record (sensor_id, value, record_datetime) VALUES (?, ?, ?)";
-    try (Connection conn = getConnection();
-         PreparedStatement stmt = conn.prepareStatement(insert)) {
-        stmt.setInt(1, sensorId);
-        stmt.setDouble(2, value);
-        stmt.setTimestamp(3, new java.sql.Timestamp(date.getTime()));
-        stmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-}*/
-
 public void insertRecord(int sensorId, double value, Date date) {
     String check = "SELECT activo FROM Sensor WHERE sensor_id = ?";
     String insert = "INSERT INTO Record (sensor_id, value, record_datetime) VALUES (?, ?, ?)";
@@ -262,27 +255,11 @@ public void insertRecord(int sensorId, double value, Date date) {
                     insertStmt.setDouble(2, value);
                     insertStmt.setTimestamp(3, new java.sql.Timestamp(date.getTime()));
                     insertStmt.executeUpdate();
-                    enviarAlHub(sensorId, value, date);
                 }
             } else {
                 System.out.println("⚠️ Registro ignorado: sensor deshabilitado (ID=" + sensorId + ")");
             }
         }
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-}
-
-private void enviarAlHub(int sensorId, double value, Date date) {
-    try {
-        SensorModel sensor = getSensorById(sensorId);
-        if (sensor == null) return;
-
-        Map<String, Object> data = new HashMap<>();
-        String tipo = sensor.getSensorType().toLowerCase().trim().replace("ó", "o");
-        data.put(tipo, value);
-
-        externalApi.sendReading(date, data);
     } catch (Exception e) {
         System.out.println("❌ Error enviando al HUB:");
         e.printStackTrace();
