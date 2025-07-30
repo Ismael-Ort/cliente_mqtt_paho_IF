@@ -13,22 +13,18 @@ import org.javadominicano.cmp.model.StationModel;
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class SuscriptorCallback implements MqttCallback {
 
     private final DatabaseManager dbManager;
     private final SimpMessagingTemplate messagingTemplate;
-    private final ExternalApiService externalApiService;
     private final Gson gson = new Gson();
 
     public SuscriptorCallback(DatabaseManager dbManager,
-                              SimpMessagingTemplate messagingTemplate,
-                              ExternalApiService externalApiService) {
+                              SimpMessagingTemplate messagingTemplate) {
         this.dbManager = dbManager;
         this.messagingTemplate = messagingTemplate;
-        this.externalApiService = externalApiService;
     }
 
     @Override
@@ -105,9 +101,6 @@ public class SuscriptorCallback implements MqttCallback {
 
             dbManager.insertRecord(sensorId, valor, fecha);
 
-            // Intentar enviar los datos agregados al HUB
-            intentarEnviarAlHub(stationId);
-
             System.out.printf("✅ Registro físico insertado: estación=%s, sensor=%s, valor=%.2f\n",
                     stationModel, sensorModel, valor);
 
@@ -162,51 +155,6 @@ public class SuscriptorCallback implements MqttCallback {
         }
     }
 
-    private void intentarEnviarAlHub(int stationId) {
-        // Buscar los sensores de temperatura y humedad de esta estación
-        SensorModel tempSensor = null;
-        SensorModel humSensor = null;
-
-        for (SensorModel s : dbManager.getSensorsByStation(stationId)) {
-            if ("temperatura".equalsIgnoreCase(s.getSensorType())) {
-                tempSensor = s;
-            } else if ("humedad".equalsIgnoreCase(s.getSensorType())) {
-                humSensor = s;
-            }
-        }
-
-        if (tempSensor == null || humSensor == null) {
-            // No tenemos ambos sensores para esta estación, no se puede enviar.
-            return;
-        }
-
-        // Obtener la última lectura de cada uno
-        RecordModel tempRecord = dbManager.getLastRecord(tempSensor.getSensorId());
-        RecordModel humRecord = dbManager.getLastRecord(humSensor.getSensorId());
-
-        if (tempRecord == null || humRecord == null) {
-            // Falta alguna de las lecturas, no se puede enviar.
-            return;
-        }
-
-        // Comprobar que ambas lecturas son recientes (ej. en los últimos 2 minutos)
-        long now = new Date().getTime();
-        if (now - tempRecord.getRecordDatetime().getTime() > TimeUnit.MINUTES.toMillis(2) ||
-            now - humRecord.getRecordDatetime().getTime() > TimeUnit.MINUTES.toMillis(2)) {
-            // Alguna lectura es demasiado antigua.
-            return;
-        }
-
-        // ¡Tenemos todo! Construimos el payload y lo enviamos.
-        Map<String, Object> data = new HashMap<>();
-        data.put("temperatura", tempRecord.getValue());
-        data.put("humedad", humRecord.getValue());
-
-        // Usamos la fecha de la lectura más reciente como referencia
-        Date fechaReferencia = tempRecord.getRecordDatetime().after(humRecord.getRecordDatetime()) ? tempRecord.getRecordDatetime() : humRecord.getRecordDatetime();
-
-        externalApiService.sendReading(fechaReferencia, data);
-    }
 
     private StationStatusDTO buildStationStatus(int stationId) {
         StationModel station = dbManager.getStationById(stationId);
