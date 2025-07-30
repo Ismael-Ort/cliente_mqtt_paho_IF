@@ -38,7 +38,9 @@ public class SuscriptorCallback implements MqttCallback {
         System.out.println("📨 Contenido: " + message);
 
         try {
-            if (topic.contains("BME280") || topic.contains("HW103")) {
+            if (topic.contains("BME280") || topic.contains("HW103") || 
+                topic.contains("Anemometro") || topic.contains("Pluviometro") || 
+                topic.contains("Veleta")) {
                 procesarMensajeFisico(topic, message);
             }
         } catch (Exception e) {
@@ -73,12 +75,12 @@ public class SuscriptorCallback implements MqttCallback {
                 sensorType = "presion";
                 unit = "hPa";
                 sensorModel = "Sensor_Pres";
-            } else if (topic.endsWith("/viento")) {
+            } else if (topic.endsWith("/velocidad_mps")) {
                 valor = Double.parseDouble(message.toString());
                 sensorType = "viento";
                 unit = "m/s";
                 sensorModel = "Sensor_Viento";
-            } else if (topic.endsWith("/precipitacion") || topic.endsWith("/precipitación")) {
+            } else if (topic.endsWith("/lluvia")) {
                 valor = Double.parseDouble(message.toString());
                 sensorType = "precipitacion";
                 unit = "mm";
