@@ -12,6 +12,7 @@ import org.javadominicano.cmp.dto.ReporteResumenDTO;
 
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -21,12 +22,16 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+// Servicio para publicar lecturas en el HUB externo
+import org.javadominicano.cmp.ExternalApiService;
+
 @Service
 public class DatabaseManager {
 
     private final String dbUrl;
     private final String dbUser;
     private final String dbPass;
+    private final ExternalApiService externalApi = new ExternalApiService();
 
     public DatabaseManager() {
         this("jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
@@ -244,12 +249,29 @@ public void insertRecord(int sensorId, double value, Date date) {
                     insertStmt.setDouble(2, value);
                     insertStmt.setTimestamp(3, new java.sql.Timestamp(date.getTime()));
                     insertStmt.executeUpdate();
+                    enviarAlHub(sensorId, value, date);
                 }
             } else {
                 System.out.println("⚠️ Registro ignorado: sensor deshabilitado (ID=" + sensorId + ")");
             }
         }
     } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+private void enviarAlHub(int sensorId, double value, Date date) {
+    try {
+        SensorModel sensor = getSensorById(sensorId);
+        if (sensor == null) return;
+
+        Map<String, Object> data = new HashMap<>();
+        String tipo = sensor.getSensorType().toLowerCase().trim().replace("ó", "o");
+        data.put(tipo, value);
+
+        externalApi.sendReading("3", String.valueOf(sensor.getStationId()), date, data);
+    } catch (Exception e) {
+        System.out.println("❌ Error enviando al HUB:");
         e.printStackTrace();
     }
 }
