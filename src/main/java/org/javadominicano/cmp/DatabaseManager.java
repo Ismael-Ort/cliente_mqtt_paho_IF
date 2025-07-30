@@ -43,6 +43,11 @@ public class DatabaseManager {
         this(new HubSenderService(), "jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
     }
 
+    public DatabaseManager(String dbUrl, String dbUser, String dbPass) {
+        this(new HubSenderService(), dbUrl, dbUser, dbPass);
+    }
+
+
     public DatabaseManager(HubSenderService hubSenderService, String dbUrl, String dbUser, String dbPass) {
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
