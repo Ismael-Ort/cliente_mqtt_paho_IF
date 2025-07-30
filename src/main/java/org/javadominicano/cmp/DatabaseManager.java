@@ -23,24 +23,32 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 // Servicio para publicar lecturas en el HUB externo
+
 import org.javadominicano.cmp.ExternalApiService;
+import org.javadominicano.cmp.HubSenderService;
 
 @Service
+
 public class DatabaseManager {
+
 
     private final String dbUrl;
     private final String dbUser;
     private final String dbPass;
-    private final ExternalApiService externalApi = new ExternalApiService();
+    private final ExternalApiService externalApi;
+    private final HubSenderService hubSenderService;
+
 
     public DatabaseManager() {
-        this("jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
+        this(new HubSenderService(), "jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
     }
 
-    public DatabaseManager(String dbUrl, String dbUser, String dbPass) {
+    public DatabaseManager(HubSenderService hubSenderService, String dbUrl, String dbUser, String dbPass) {
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
         this.dbPass = dbPass;
+        this.hubSenderService = hubSenderService;
+        this.externalApi = new ExternalApiService(hubSenderService);
         createAlertRuleTable();
     }
 
