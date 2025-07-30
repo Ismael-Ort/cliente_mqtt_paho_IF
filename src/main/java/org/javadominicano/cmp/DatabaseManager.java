@@ -774,85 +774,90 @@ public boolean hasDisconnectAlert(int stationId) {
         return list;
     }
 
-    public List<ReporteResumenDTO> getResumenMaxMin(Integer stationId, Date desde, Date hasta) {
-        Map<Integer, ReporteResumenDTO> resumenMap = new LinkedHashMap<>();
+public List<ReporteResumenDTO> getResumenMaxMin(Integer stationId, Date desde, Date hasta) {
+    List<ReporteResumenDTO> resumenList = new ArrayList<>();
 
-        StringBuilder query = new StringBuilder("""
+    // eficientemente el registro con el valor máximo y mínimo para cada sensor.
+    String sql = """
+        WITH RankedRecords AS (
             SELECT
-                st.station_model AS nombreEstacion,
-                s.sensor_model AS sensorNombre,
-                s.sensor_type AS tipoSensor,
-                r.value AS valor,
-                r.record_datetime AS fecha,
-                s.sensor_id AS sensorId
+                st.station_model,
+                s.sensor_model,
+                s.sensor_type,
+                r.value,
+                r.record_datetime,
+                s.sensor_id,
+                ROW_NUMBER() OVER(PARTITION BY s.sensor_id ORDER BY r.value DESC, r.record_datetime DESC) as rn_max,
+                ROW_NUMBER() OVER(PARTITION BY s.sensor_id ORDER BY r.value ASC, r.record_datetime DESC) as rn_min
             FROM Record r
             JOIN Sensor s ON r.sensor_id = s.sensor_id
             JOIN Station st ON s.station_id = st.station_id
             WHERE 1=1
-        """);
+    """;
 
-        List<Object> params = new ArrayList<>();
+    StringBuilder queryBuilder = new StringBuilder(sql);
+    List<Object> params = new ArrayList<>();
 
-        if (stationId != null) {
-            query.append(" AND st.station_id = ?");
-            params.add(stationId);
-        }
-
-        if (desde != null) {
-            query.append(" AND r.record_datetime >= ?");
-            params.add(new java.sql.Timestamp(desde.getTime()));
-        }
-
-        if (hasta != null) {
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(hasta);
-            cal.set(Calendar.HOUR_OF_DAY, 23);
-            cal.set(Calendar.MINUTE, 59);
-            cal.set(Calendar.SECOND, 59);
-            query.append(" AND r.record_datetime <= ?");
-            params.add(new java.sql.Timestamp(cal.getTimeInMillis()));
-        }
-
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query.toString())) {
-
-            for (int i = 0; i < params.size(); i++) {
-                stmt.setObject(i + 1, params.get(i));
-            }
-
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                int sId = rs.getInt("sensorId");
-                double valor = rs.getDouble("valor");
-                Date fecha = rs.getTimestamp("fecha");
-                ReporteResumenDTO dto = resumenMap.get(sId);
-                if (dto == null) {
-                    dto = new ReporteResumenDTO();
-                    dto.setNombreEstacion(rs.getString("nombreEstacion"));
-                    dto.setSensorNombre(rs.getString("sensorNombre"));
-                    dto.setTipoSensor(rs.getString("tipoSensor"));
-                    dto.setValorMax(valor);
-                    dto.setFechaMax(fecha);
-                    dto.setValorMin(valor);
-                    dto.setFechaMin(fecha);
-                    resumenMap.put(sId, dto);
-                } else {
-                    if (valor > dto.getValorMax()) {
-                        dto.setValorMax(valor);
-                        dto.setFechaMax(fecha);
-                    }
-                    if (valor < dto.getValorMin()) {
-                        dto.setValorMin(valor);
-                        dto.setFechaMin(fecha);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return new ArrayList<>(resumenMap.values());
+    if (stationId != null) {
+        queryBuilder.append(" AND st.station_id = ?");
+        params.add(stationId);
     }
+    if (desde != null) {
+        queryBuilder.append(" AND r.record_datetime >= ?");
+        params.add(new java.sql.Timestamp(desde.getTime()));
+    }
+    if (hasta != null) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(hasta);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        queryBuilder.append(" AND r.record_datetime <= ?");
+        params.add(new java.sql.Timestamp(cal.getTimeInMillis()));
+    }
+
+    queryBuilder.append("""
+        ),
+        MaxValues AS (SELECT * FROM RankedRecords WHERE rn_max = 1),
+        MinValues AS (SELECT * FROM RankedRecords WHERE rn_min = 1)
+        SELECT
+            max_vals.station_model AS nombreEstacion,
+            max_vals.sensor_model AS sensorNombre,
+            max_vals.sensor_type AS tipoSensor,
+            max_vals.value AS valorMax,
+            max_vals.record_datetime AS fechaMax,
+            min_vals.value AS valorMin,
+            min_vals.record_datetime AS fechaMin
+        FROM MaxValues max_vals
+        JOIN MinValues min_vals ON max_vals.sensor_id = min_vals.sensor_id
+        ORDER BY nombreEstacion, sensorNombre
+    """);
+
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString())) {
+
+        for (int i = 0; i < params.size(); i++) {
+            stmt.setObject(i + 1, params.get(i));
+        }
+
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            ReporteResumenDTO dto = new ReporteResumenDTO();
+            dto.setNombreEstacion(rs.getString("nombreEstacion"));
+            dto.setSensorNombre(rs.getString("sensorNombre"));
+            dto.setTipoSensor(rs.getString("tipoSensor"));
+            dto.setValorMax(rs.getDouble("valorMax"));
+            dto.setFechaMax(rs.getTimestamp("fechaMax"));
+            dto.setValorMin(rs.getDouble("valorMin"));
+            dto.setFechaMin(rs.getTimestamp("fechaMin"));
+            resumenList.add(dto);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return resumenList;
+}
 
 
     public List<AlertRuleModel> getAllAlertRules() {

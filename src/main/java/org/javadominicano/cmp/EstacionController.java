@@ -37,6 +37,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 import java.util.*;
@@ -46,12 +47,9 @@ public class EstacionController {
 
     private final DatabaseManager dbManager;
 
-    public EstacionController() {
-        this.dbManager = new DatabaseManager(
-            "jdbc:mysql://192.168.100.168/MqttBase",
-            "usermqtt",
-            "Mqtt1234!"
-        );
+    @Autowired
+    public EstacionController(DatabaseManager dbManager) {
+        this.dbManager = dbManager;
     }
 
     @GetMapping("/dashboard/estaciones")
