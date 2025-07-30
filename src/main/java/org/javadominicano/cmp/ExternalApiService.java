@@ -43,6 +43,7 @@ public class ExternalApiService {
             payload.putAll(data);
 
             String json = gson.toJson(payload);
+            System.out.println("\uD83D\uDCC3 JSON enviado al HUB: " + json);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
@@ -52,7 +53,10 @@ public class ExternalApiService {
                     .build();
 
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(r -> System.out.println("\u2705 Lectura enviada al HUB, status " + r.statusCode()))
+                    .thenAccept(r -> {
+                        System.out.println("\u2705 Lectura enviada al HUB, status " + r.statusCode());
+                        System.out.println("\u2139\uFE0F Respuesta del servidor: " + r.body());
+                    })
                     .exceptionally(e -> {
                         System.out.println("\u274C Error enviando al HUB: " + e.getMessage());
                         return null;
