@@ -41,17 +41,13 @@ public class ExternalApiService {
             payload.put("fecha", FORMATTER.format(date.toInstant()
                     .atZone(ZoneId.systemDefault()).toLocalDateTime()));
 
-            // Solo incluir los campos válidos para el HUB
+            // Solo incluir los campos válidos para el HUB: temperatura y humedad
             if (data.containsKey("temperatura")) {
                 payload.put("temperatura", data.get("temperatura"));
             }
             if (data.containsKey("humedad")) {
                 payload.put("humedad", data.get("humedad"));
             }
-            if (data.containsKey("presion")) {
-                payload.put("presion", data.get("presion"));
-            }
-            // Si el HUB acepta más campos, agrégalos aquí siguiendo el mismo patrón
 
             String json = gson.toJson(payload);
             System.out.println("\uD83D\uDCC3 JSON enviado al HUB: " + json);
