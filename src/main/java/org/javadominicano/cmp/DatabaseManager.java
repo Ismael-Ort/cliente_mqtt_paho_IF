@@ -269,7 +269,7 @@ private void enviarAlHub(int sensorId, double value, Date date) {
         String tipo = sensor.getSensorType().toLowerCase().trim().replace("ó", "o");
         data.put(tipo, value);
 
-        externalApi.sendReading("3", String.valueOf(sensor.getStationId()), date, data);
+        externalApi.sendReading(date, data);
     } catch (Exception e) {
         System.out.println("❌ Error enviando al HUB:");
         e.printStackTrace();
