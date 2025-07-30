@@ -19,6 +19,8 @@ public class ExternalApiService {
 
     private static final String API_URL = "https://itt363-hub.smar.com.do/api/";
     private static final String TOKEN = "p7tWxFnpMfPE";
+    private static final String GROUP = "3";
+    private static final String STATION = "1";
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -28,16 +30,14 @@ public class ExternalApiService {
     /**
      * Envía una lectura al HUB.
      *
-     * @param group   identificador de grupo
-     * @param station identificador de estación
      * @param date    fecha de la lectura
      * @param data    mapa con el tipo de sensor y su valor
      */
-    public void sendReading(String group, String station, Date date, Map<String, Object> data) {
+    public void sendReading(Date date, Map<String, Object> data) {
         try {
             Map<String, Object> payload = new HashMap<>();
-            payload.put("grupo", group);
-            payload.put("estacion", station);
+            payload.put("grupo", GROUP);
+            payload.put("estacion", STATION);
             payload.put("fecha", FORMATTER.format(date.toInstant()
                     .atZone(ZoneId.systemDefault()).toLocalDateTime()));
             payload.putAll(data);
