@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 // Servicio para publicar lecturas en el HUB externo
 
 import org.javadominicano.cmp.ExternalApiService;
-import org.javadominicano.cmp.HubSenderService;
+import org.javadominicano.cmp.service.HubSenderService;
 
 @Service
 
