@@ -53,7 +53,7 @@ public class SuscriptorCallback implements MqttCallback {
 
             String sensorType, unit, sensorModel;
 
-            if (topic.endsWith("/direccion_viento")) {
+            if (topic.endsWith("/direccion_viento") || topic.endsWith("/direccion")) {
                 sensorType = "direccion_viento";
                 unit = "";
                 sensorModel = "Sensor_DirViento";
