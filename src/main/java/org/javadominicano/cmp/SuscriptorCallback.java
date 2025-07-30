@@ -123,13 +123,13 @@ public class SuscriptorCallback implements MqttCallback {
                     }
 
                     cumple = "ALTA".equals(tipo)
-                            ? valor >= regla.getUmbral()
-                            : valor <= regla.getUmbral();
+                            ? valor > regla.getUmbral()
+                            : valor < regla.getUmbral();
 
                     if (cumple && !regla.isActiva()) {
                         String msg = "ALTA".equals(tipo)
                                 ? "Umbral alto superado"
-                                : "Umbral bajo alcanzado";
+                                : "Umbral bajo superado";
 
                         dbFisico.insertAlert(stationId, sensorId, valor, msg);
                         dbFisico.updateAlertRuleState(regla.getRuleId(), true);

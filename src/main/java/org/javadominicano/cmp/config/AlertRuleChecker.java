@@ -31,11 +31,11 @@ public class AlertRuleChecker {
             RecordModel last = db.getLastRecord(r.getSensorId());
             if (last == null) continue;
             boolean cumple = "ALTA".equalsIgnoreCase(r.getTipo())
-                    ? last.getValue() >= r.getUmbral()
-                    : last.getValue() <= r.getUmbral();
+                    ? last.getValue() > r.getUmbral()
+                    : last.getValue() < r.getUmbral();
             if (cumple && !r.isActiva()) {
                 String msg = "ALTA".equalsIgnoreCase(r.getTipo())
-                        ? "Umbral alto superado" : "Umbral bajo alcanzado";
+                        ? "Umbral alto superado" : "Umbral bajo superado";
                 db.insertAlert(r.getStationId(), r.getSensorId(), last.getValue(), msg);
                 db.updateAlertRuleState(r.getRuleId(), true);
 
