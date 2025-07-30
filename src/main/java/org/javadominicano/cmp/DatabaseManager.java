@@ -657,6 +657,7 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
     return list;
 }
 
+
 public boolean hasDisconnectAlert(int stationId) {
     String sql = "SELECT COUNT(*) FROM WeatherAlert WHERE station_id = ? AND sensor_id = 0 AND message = ?";
     try (Connection conn = getConnection();
