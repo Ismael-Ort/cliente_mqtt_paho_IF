@@ -1,6 +1,9 @@
 package org.javadominicano.cmp;
 
 import com.google.gson.Gson;
+
+// Clase que representa una lectura de sensor
+import org.javadominicano.cmp.Sensor;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -71,6 +74,72 @@ public class ExternalApiService {
 
         } catch (Exception e) {
             System.out.println("\u274C Error preparando envío al HUB:");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Envia una lectura completa al HUB externo utilizando los datos del objeto Sensor.
+     *
+     * @param sensor lectura a enviar
+     */
+    public void enviarLecturaAHubExterno(Sensor sensor) {
+        if (sensor == null) {
+            return;
+        }
+
+        if (sensor.getFecha() == null) {
+            System.out.println("\u274C Fecha nula, no se envía al HUB externo");
+            return;
+        }
+
+        if (sensor.getTemperatura() == null && sensor.getHumedad() == null) {
+            System.out.println("\u274C Temperatura y humedad nulas, no se envía al HUB externo");
+            return;
+        }
+
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("grupo", GROUP);
+
+            String estacion = "1";
+            String id = sensor.getSensorId();
+            if (id != null && id.contains("2")) {
+                estacion = "2";
+            }
+            payload.put("estacion", estacion);
+
+            payload.put(
+                    "fecha",
+                    FORMATTER.format(sensor.getFecha().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+            );
+
+            if (sensor.getTemperatura() != null) {
+                payload.put("temperatura", sensor.getTemperatura());
+            }
+            if (sensor.getHumedad() != null) {
+                payload.put("humedad", sensor.getHumedad());
+            }
+
+            String json = gson.toJson(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("SEGURIDAD-TOKEN", TOKEN)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200 || response.statusCode() == 201) {
+                System.out.println("\u2705 Envío al HUB externo exitoso (" + response.statusCode() + ")");
+            } else {
+                System.out.println("\u274C Error enviando al HUB externo: HTTP " + response.statusCode());
+            }
+
+        } catch (Exception e) {
+            System.out.println("\u274C Error enviando al HUB externo:");
             e.printStackTrace();
         }
     }
