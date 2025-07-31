@@ -38,13 +38,19 @@ public class ExternalApiService {
      */
     public void sendReading(Date date, Map<String, Object> data) {
         try {
+            // 🚫 Validar que haya al menos temperatura o humedad
+            if (!data.containsKey("temperatura") && !data.containsKey("humedad")) {
+                System.out.println("🚫 No se enviará al HUB: solo se aceptan lecturas de temperatura o humedad.");
+                return;
+            }
+
             Map<String, Object> payload = new HashMap<>();
             payload.put("grupo", GROUP);
             payload.put("estacion", STATION);
             payload.put("fecha", FORMATTER.format(date.toInstant()
                     .atZone(ZoneId.systemDefault()).toLocalDateTime()));
 
-            // Solo incluir los campos válidos para el HUB: temperatura y humedad
+            // Solo incluir temperatura y/o humedad si están presentes
             if (data.containsKey("temperatura")) {
                 payload.put("temperatura", data.get("temperatura"));
             }
