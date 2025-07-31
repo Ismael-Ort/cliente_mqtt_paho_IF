@@ -38,9 +38,9 @@ public class ExternalApiService {
      */
     public void sendReading(Date date, Map<String, Object> data) {
         try {
-            // 🚫 Validar que haya al menos temperatura o humedad
+            //  Validar que haya al menos temperatura o humedad
             if (!data.containsKey("temperatura") && !data.containsKey("humedad")) {
-                System.out.println("🚫 No se enviará al HUB: solo se aceptan lecturas de temperatura o humedad.");
+                System.out.println("No se enviará al HUB: solo se aceptan lecturas de temperatura o humedad.");
                 return;
             }
 
@@ -93,14 +93,14 @@ public class ExternalApiService {
         if (sensor == null) {
             return;
         }
-
+        
         if (sensor.getFecha() == null) {
             System.out.println("\u274C Fecha nula, no se envía al HUB externo");
             return;
         }
 
         if (sensor.getTemperatura() == null && sensor.getHumedad() == null) {
-            System.out.println("\u274C Temperatura y humedad nulas, no se envía al HUB externo");
+            System.out.println("Temperatura y humedad nulas, no se envía al HUB externo");
             return;
         }
 
