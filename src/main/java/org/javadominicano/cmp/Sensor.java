@@ -5,7 +5,8 @@ import java.util.Date;
 public class Sensor {
     private String sensorId;
     private String sensorType;
-    private double temperatura;
+    private Double temperatura;
+    private Double humedad;
     private Date fecha;
     private String unidad;
 
@@ -14,8 +15,14 @@ public class Sensor {
     public Sensor(String sensorId, String sensorType) {
         this.sensorId = sensorId;
         this.sensorType = sensorType;
-        this.temperatura = Math.random() * 20 + 15;
         this.fecha = new Date();
+
+        switch (sensorType.toLowerCase()) {
+            case "temperatura" -> this.temperatura = Math.random() * 20 + 15;
+            case "humedad" -> this.humedad = Math.random() * 40 + 40;
+            default -> this.temperatura = Math.random() * 20 + 15;
+        }
+
         this.unidad = switch (sensorType.toLowerCase()) {
             case "temperatura" -> "\u00B0C";
             case "humedad" -> "%";
@@ -31,8 +38,11 @@ public class Sensor {
     public String getSensorType() { return sensorType; }
     public void setSensorType(String sensorType) { this.sensorType = sensorType; }
 
-    public double getTemperatura() { return temperatura; }
-    public void setTemperatura(double temperatura) { this.temperatura = temperatura; }
+    public Double getTemperatura() { return temperatura; }
+    public void setTemperatura(Double temperatura) { this.temperatura = temperatura; }
+
+    public Double getHumedad() { return humedad; }
+    public void setHumedad(Double humedad) { this.humedad = humedad; }
 
     public Date getFecha() { return fecha; }
     public void setFecha(Date fecha) { this.fecha = fecha; }
