@@ -8,10 +8,15 @@ import org.javadominicano.cmp.dto.StationStatusDTO;
 import org.javadominicano.cmp.model.RecordModel;
 import org.javadominicano.cmp.model.SensorModel;
 import org.javadominicano.cmp.model.StationModel;
+import java.text.SimpleDateFormat;
 
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.javadominicano.cmp.SensorDataAcumulado;
+import org.javadominicano.cmp.ApiClient;
 
 public class SuscriptorCallback implements MqttCallback {
 
@@ -19,6 +24,7 @@ public class SuscriptorCallback implements MqttCallback {
     private final DatabaseManager dbFisico;
     private final SimpMessagingTemplate messagingTemplate;
     private final Gson gson = new Gson();
+    private final Map<String, SensorDataAcumulado> datosAcumulados = new ConcurrentHashMap<>();
 
     public SuscriptorCallback(DatabaseManager dbSimulado, DatabaseManager dbFisico,
                               SimpMessagingTemplate messagingTemplate) {
@@ -101,6 +107,8 @@ public class SuscriptorCallback implements MqttCallback {
             int sensorId = dbFisico.getOrCreateSensor(stationId, sensorModel, sensorType, unit);
 
             dbFisico.insertRecord(sensorId, valor, fecha);
+
+            actualizarDatosHub(topic, sensorType, message.toString(), valor, fecha);
 
             System.out.printf("✅ Registro físico insertado: estación=%s, sensor=%s, valor=%.2f\n",
                     stationModel, sensorModel, valor);
@@ -206,6 +214,32 @@ public class SuscriptorCallback implements MqttCallback {
         alerta.setMensaje(mensaje);
 
         return alerta;
+    }
+
+    private void actualizarDatosHub(String topic, String sensorType, String valorStr, double valor, Date fecha) {
+        String[] partes = topic.split("/");
+        if (partes.length < 3) return;
+
+        String estacionId = partes[2];
+
+        SensorDataAcumulado data = datosAcumulados.computeIfAbsent(estacionId, k -> new SensorDataAcumulado());
+        data.setFecha(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(fecha));
+        data.setEstacionId(estacionId);
+
+        switch (sensorType) {
+            case "temperatura" -> { data.setTemperatura(valor); data.sensor_temperatura = partes[3]; }
+            case "humedad" -> { data.setHumedad(valor); data.sensor_humedad = partes[3]; }
+            case "presion" -> { data.setPresion(valor); data.sensor_presion = partes[3]; }
+            case "viento" -> { data.setVelocidad(valor); data.sensor_velocidad = partes[3]; }
+            case "direccion_viento" -> { data.setDireccion(valorStr); data.sensor_direccion = partes[3]; }
+            case "precipitacion" -> { data.setPrecipitacion(valor); data.sensor_precipitacion = partes[3]; }
+            case "humedad_suelo" -> { data.setHumedadSuelo(valor); data.sensor_humedad_suelo = partes[3]; }
+        }
+
+        if (data.estaCompleto()) {
+            ApiClient.enviarDatos(data.toJsonApi());
+            data.reiniciar();
+        }
     }
 
     private double convertirDireccionAFloat(String direccion) {
