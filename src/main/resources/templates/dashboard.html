@@ -85,6 +85,32 @@ function mostrarBanner(nombre) {
     </div>`;
 }
 
+function mostrarAlertaBanner(alerta) {
+    const cont = document.getElementById('alert-banner');
+    const mensaje = alerta.mensaje ? alerta.mensaje.toLowerCase() : '';
+    const esUmbral = mensaje.includes('umbral alto') || mensaje.includes('umbral bajo');
+    const duracion = esUmbral ? 10000 : 4000;
+    const tipo = mensaje.includes('umbral alto') ? 'danger' : 'warning';
+    const icono = tipo === 'danger' ? '🚨' : '⚠️';
+    const div = document.createElement('div');
+    div.className = `alert alert-${tipo} alert-dismissible fade show`;
+    div.role = 'alert';
+    div.innerHTML = esUmbral ? `
+        ${icono} ¡Alerta activa! Umbral superado para <strong>${alerta.sensorNombre}</strong>
+        en <strong>${alerta.nombreEstacion}</strong> — Valor: <strong>${alerta.valor}</strong>
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    ` : `
+        ${icono} ${alerta.mensaje}
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    `;
+    cont.appendChild(div);
+    const timer = setTimeout(() => div.remove(), duracion);
+    div.querySelector('.btn-close').onclick = () => {
+        clearTimeout(timer);
+        div.remove();
+    };
+}
+
 function ocultarBanner() {
     document.getElementById('alert-banner').innerHTML = '';
 }
@@ -233,6 +259,8 @@ function conectarWS() {
             actualizarResumenGeneral();
             if(a.mensaje === 'Estación desconectada por inactividad') {
                 mostrarBanner(a.nombreEstacion);
+            } else {
+                mostrarAlertaBanner(a);
             }
         });
     });
