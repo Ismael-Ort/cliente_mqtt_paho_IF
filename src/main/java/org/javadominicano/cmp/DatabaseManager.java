@@ -651,6 +651,7 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
         SELECT wa.alert_id AS id,
                st.station_model AS estacion,
                se.sensor_model AS sensor,
+               se.sensor_type AS tipo_sensor,
                wa.message AS mensaje,
                wa.value AS valor,
                wa.alert_datetime AS fecha
@@ -667,6 +668,7 @@ public List<WeatherAlertDTO> getWeatherAlerts() {
             dto.setId(rs.getInt("id"));
             dto.setEstacion(rs.getString("estacion"));
             dto.setSensor(rs.getString("sensor"));
+            dto.setTipoSensor(rs.getString("tipo_sensor"));
 
             String mensaje = rs.getString("mensaje");
             String tipo = "N/A";

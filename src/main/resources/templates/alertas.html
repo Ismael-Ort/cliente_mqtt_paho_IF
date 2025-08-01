@@ -28,6 +28,9 @@
 <div class="main-content">
     <h1>Gestión de Alertas</h1>
 
+    <!-- Contenedor de tarjetas con la última alerta generada por sensor -->
+    <div id="alert-cards" class="card-grid" style="margin-bottom:1rem;"></div>
+
     <div class="alert-form">
         <h3>Crear Alerta</h3>
         <form id="alertForm">
@@ -92,6 +95,7 @@ let alertas = [];
 let currentPage = 1;
 const rowsPerPage = 5;
 let stompClient;
+let alertHistory = {};
 
 
 function cargarEstaciones() {
@@ -147,12 +151,66 @@ function cargarAlertas() {
         .catch(error => console.error('Error al cargar las reglas de alerta:', error));
 }
 
+function cargarAlertHistory() {
+    fetch('/api/alertas/ocurridas')
+        .then(r => r.json())
+        .then(data => {
+            alertHistory = {};
+            data.forEach(a => {
+                const key = `${a.estacion}-${a.sensor}`;
+                if(!alertHistory[key] || new Date(a.fecha) > new Date(alertHistory[key].fecha)) {
+                    alertHistory[key] = a;
+                }
+            });
+            renderAlertCards();
+        });
+}
+
+function renderAlertCards() {
+    const cont = document.getElementById('alert-cards');
+    cont.innerHTML = '';
+    Object.values(alertHistory).forEach(a => {
+        const tipo = (a.tipo || '').toUpperCase() === 'ALTA' ? 'alta' : 'baja';
+        const fecha = a.fecha ? new Date(a.fecha).toLocaleString('es-DO') : 'N/D';
+        const valor = (a.valor !== undefined) ? Number(a.valor).toFixed(1) : 'N/D';
+        const card = document.createElement('div');
+        card.className = `alert-card ${tipo}`;
+        card.innerHTML = `
+            <h4>${a.estacion}</h4>
+            <p><strong>Sensor:</strong> ${a.tipoSensor ?? a.sensor ?? 'N/A'}</p>
+            <p><strong>Valor:</strong> ${valor}</p>
+            <p><strong>Fecha:</strong> ${fecha}</p>
+            <p class="alert-tipo">${a.tipo}</p>
+        `;
+        cont.appendChild(card);
+    });
+}
+
+function procesarAlertaWs(a) {
+    const key = `${a.nombreEstacion}-${a.sensorNombre}`;
+    const m = (a.mensaje || '').toLowerCase();
+    const tipo = m.includes('bajo') ? 'BAJA' : m.includes('alto') ? 'ALTA' : '';
+    alertHistory[key] = {
+        estacion: a.nombreEstacion,
+        sensor: a.sensorNombre,
+        tipoSensor: a.tipoSensor,
+        valor: a.valor,
+        fecha: a.fecha,
+        tipo: tipo
+    };
+    renderAlertCards();
+}
+
 
 function conectarWS() {
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
     stompClient.connect({}, () => {
-        stompClient.subscribe('/topic/alertas', () => {
+        stompClient.subscribe('/topic/alertas', msg => {
+            try {
+                const a = JSON.parse(msg.body);
+                procesarAlertaWs(a);
+            } catch (e) {}
             cargarAlertas();
         });
     });
@@ -253,6 +311,7 @@ document.getElementById('alertForm').addEventListener('submit', e => {
 
 cargarEstaciones();
 cargarAlertas();
+cargarAlertHistory();
 conectarWS();
 
 </script>

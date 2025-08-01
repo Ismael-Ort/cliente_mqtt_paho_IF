@@ -7,6 +7,8 @@ public class WeatherAlertDTO {
     private String estacion;
     private String sensor;
 
+    private String tipoSensor;
+
     private String tipo;
     private double umbral;
     private LocalDateTime fecha;
@@ -25,6 +27,9 @@ public class WeatherAlertDTO {
 
     public String getSensor() { return sensor; }
     public void setSensor(String sensor) { this.sensor = sensor; }
+
+    public String getTipoSensor() { return tipoSensor; }
+    public void setTipoSensor(String tipoSensor) { this.tipoSensor = tipoSensor; }
 
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }
