@@ -263,12 +263,17 @@ public void insertRecord(int sensorId, double value, Date date) {
 private void enviarAlHub(int sensorId, double value, Date date) {
     try {
         SensorModel sensor = getSensorById(sensorId);
-        if (sensor == null) return;
+        if (sensor == null || sensor.getSensorType() == null) {
+            return;
+        }
+
+        String tipo = sensor.getSensorType().toLowerCase().trim();
+        if (!"temperatura".equals(tipo) && !"humedad".equals(tipo)) {
+            return; // solo enviar temperatura u humedad
+        }
 
         Map<String, Object> data = new HashMap<>();
-        String tipo = sensor.getSensorType().toLowerCase().trim().replace("ó", "o");
         data.put(tipo, value);
-
         externalApi.sendReading(date, data);
     } catch (Exception e) {
         System.out.println("❌ Error enviando al HUB:");
