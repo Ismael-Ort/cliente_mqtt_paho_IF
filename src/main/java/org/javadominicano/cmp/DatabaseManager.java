@@ -23,7 +23,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 // Servicio para publicar lecturas en el HUB externo
-import org.javadominicano.cmp.ExternalApiService;
 
 @Service
 public class DatabaseManager {
@@ -31,7 +30,6 @@ public class DatabaseManager {
     private final String dbUrl;
     private final String dbUser;
     private final String dbPass;
-    private final ExternalApiService externalApi = new ExternalApiService();
 
     public DatabaseManager() {
         this("jdbc:mysql://192.168.100.168/MqttBase", "usermqtt", "Mqtt1234!");
@@ -261,17 +259,53 @@ public void insertRecord(int sensorId, double value, Date date) {
 }
 
 private void enviarAlHub(int sensorId, double value, Date date) {
+    SensorModel sensor = getSensorById(sensorId);
+    if (sensor == null) return;
+
+    String tipo = sensor.getSensorType().toLowerCase().trim();
+    if (!tipo.equals("temperatura") && !tipo.equals("humedad")) {
+        System.out.println("🚫 No se envía al HUB: solo temperatura y humedad.");
+        return;
+    }
+
     try {
-        SensorModel sensor = getSensorById(sensorId);
-        if (sensor == null) return;
+        String apiUrl = "https://itt363-hub.smar.com.do/api/";
+        String token = "p7tWxFnpMfPE";
+        String grupo = "3";
+        String estacion = sensor.getSensorModel().contains("2") ? "2" : "1";
 
-        Map<String, Object> data = new HashMap<>();
-        String tipo = sensor.getSensorType().toLowerCase().trim().replace("ó", "o");
-        data.put(tipo, value);
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        String fecha = formatter.format(date);
 
-        externalApi.sendReading(date, data);
+        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("grupo", grupo);
+        payload.put("estacion", estacion);
+        payload.put("fecha", fecha);
+        payload.put(tipo, value);
+
+        String json = new com.google.gson.Gson().toJson(payload);
+        System.out.println("📤 JSON enviado al HUB: " + json);
+
+        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(apiUrl))
+                .header("SEGURIDAD-TOKEN", token)
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    System.out.println("✅ HUB Status: " + response.statusCode());
+                    System.out.println("ℹ️ Respuesta: " + response.body());
+                })
+                .exceptionally(e -> {
+                    System.err.println("❌ Error enviando al HUB externo: " + e.getMessage());
+                    return null;
+                });
     } catch (Exception e) {
-        System.out.println("❌ Error enviando al HUB:");
+        System.err.println("❌ Error preparando envío al HUB externo:");
         e.printStackTrace();
     }
 }
